@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="30dp"
+    android:gravity="center">
+
+    <!-- 앱 로고나 타이틀 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="환영합니다!"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp"
+        android:textColor="@android:color/black"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="서비스를 이용하려면 시작해 주세요."
+        android:textSize="16sp"
+        android:layout_marginBottom="60dp"
+        android:textColor="#777777"/>
+
+    <!-- 로그인 버튼 (강조) -->
+    <Button
+        android:id="@+id/btn_go_login"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="로그인"
+        android:textSize="18sp"
+        android:layout_marginBottom="15dp"/>
+
+    <!-- 회원가입 버튼 (보조) -->
+    <Button
+        android:id="@+id/btn_go_register"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="회원가입"
+        android:textSize="18sp"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+</LinearLayout>

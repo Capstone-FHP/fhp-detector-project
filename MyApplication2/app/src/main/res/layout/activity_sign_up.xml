@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="30dp"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="회원가입"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="30dp"
+        android:textColor="@android:color/black"/>
+
+    <!-- 이름 입력창 -->
+    <EditText
+        android:id="@+id/et_signup_name"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="이름"
+        android:inputType="textPersonName"
+        android:background="@android:drawable/editbox_background"
+        android:paddingLeft="15dp"
+        android:layout_marginBottom="10dp"/>
+
+    <!-- 아이디(이메일) 입력창 -->
+    <EditText
+        android:id="@+id/et_signup_id"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="아이디(이메일)"
+        android:inputType="textEmailAddress"
+        android:background="@android:drawable/editbox_background"
+        android:paddingLeft="15dp"
+        android:layout_marginBottom="10dp"/>
+
+    <!-- 비밀번호 입력창 -->
+    <EditText
+        android:id="@+id/et_signup_pw"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="비밀번호"
+        android:inputType="textPassword"
+        android:background="@android:drawable/editbox_background"
+        android:paddingLeft="15dp"
+        android:layout_marginBottom="10dp"/>
+
+    <!-- 비밀번호 확인 입력창 -->
+    <EditText
+        android:id="@+id/et_signup_pw_confirm"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:hint="비밀번호 확인"
+        android:inputType="textPassword"
+        android:background="@android:drawable/editbox_background"
+        android:paddingLeft="15dp"
+        android:layout_marginBottom="20dp"/>
+
+    <Button
+        android:id="@+id/btn_signup_submit"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="가입 완료"
+        android:textSize="18sp" />
+
+</LinearLayout>
