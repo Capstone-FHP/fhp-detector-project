@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -32,6 +33,18 @@ class MainActivity : AppCompatActivity() {
             }
             binding.drawerLayout.closeDrawer(GravityCompat.START)
             true
+        }
+
+        // 1번 버튼: 주요 기능 화면으로 이동
+        binding.menuBtn1.setOnClickListener {
+            val intent = Intent(this, ActionActivity::class.java)
+            startActivity(intent)
+        }
+
+        // 2번 버튼: 통계 확인 화면으로 이동
+        binding.menuBtn2.setOnClickListener {
+            val intent = Intent(this, StatisticActivity::class.java)
+            startActivity(intent)
         }
     }
 
