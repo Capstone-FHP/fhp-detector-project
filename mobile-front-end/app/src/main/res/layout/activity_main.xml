@@ -16,17 +16,6 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- 상단 툴바: 햄버거 버튼이 들어갈 자리 -->
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            android:elevation="4dp"
-            app:navigationIcon="@android:drawable/ic_menu_sort_by_size"
-            app:title="나의 앱"
-            app:titleTextColor="@android:color/white" />
-
         <!-- 버튼들이 들어갈 본문 영역 -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -72,13 +61,5 @@
                 android:textColor="@android:color/white" />
         </LinearLayout>
     </LinearLayout>
-
-    <!-- 3. 슬라이드 메뉴 (NavigationView): 왼쪽에서 슥 나오는 부분 -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nav_view"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        app:menu="@menu/nav_menu" /> <!-- 미리 만드신 메뉴 파일 연결 -->
 
 </androidx.drawerlayout.widget.DrawerLayout>
