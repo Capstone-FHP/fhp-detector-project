@@ -1,46 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="30dp"
-    android:gravity="center_vertical">
+    android:padding="32dp"
+    android:gravity="center_vertical"
+    android:background="@color/background">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="로그인"
-        android:textSize="28sp"
+        android:textSize="26sp"
         android:textStyle="bold"
-        android:layout_marginBottom="30dp"
-        android:textColor="@android:color/black"/>
+        android:layout_marginBottom="32dp"
+        android:textColor="@color/text_primary"
+        android:gravity="center"/>
 
-    <EditText
-        android:id="@+id/et_login_id"
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="55dp"
-        android:hint="아이디(이메일)"
-        android:inputType="textEmailAddress"
-        android:background="@android:drawable/editbox_background"
-        android:paddingLeft="15dp"
-        android:layout_marginBottom="10dp"/>
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="@color/surface"
+        android:layout_marginBottom="24dp">
 
-    <EditText
-        android:id="@+id/et_login_pw"
-        android:layout_width="match_parent"
-        android:layout_height="55dp"
-        android:hint="비밀번호"
-        android:inputType="textPassword"
-        android:background="@android:drawable/editbox_background"
-        android:paddingLeft="15dp"
-        android:layout_marginBottom="20dp"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-    <Button
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:boxBackgroundColor="@android:color/transparent"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_login_id"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="아이디/이메일"
+                    android:inputType="textEmailAddress"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:boxBackgroundColor="@android:color/transparent"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_login_pw"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="비밀번호"
+                    android:inputType="textPassword"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_login_submit"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="로그인 완료"
-        android:textSize="18sp" />
+        android:layout_height="56dp"
+        android:text="로그인"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:cornerRadius="28dp"
+        app:backgroundTint="@color/primary"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"/>
 
 </LinearLayout>

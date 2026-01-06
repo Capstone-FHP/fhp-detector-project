@@ -2,4 +2,15 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="primary">#03C75A</color> <!-- Naver Green -->
+    <color name="primary_variant">#008C3E</color>
+    <color name="secondary">#03C75A</color>
+    <color name="background">#F0F2F5</color> <!-- Slightly darker cool gray for better contrast with white cards -->
+    <color name="surface">#FFFFFF</color>
+    <color name="menu_button_bg">#E8F5E9</color> <!-- Very light green tint for menu buttons -->
+    <color name="error">#FF4D4F</color>
+    <color name="text_primary">#222222</color>
+    <color name="text_secondary">#888888</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="papago_blue">#2DB400</color>
 </resources>
