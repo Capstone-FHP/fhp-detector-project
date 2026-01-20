@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "707547024162",
+    "project_id": "fhp-detector",
+    "storage_bucket": "fhp-detector.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:707547024162:android:ddc6d79d71cca414c5f37b",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "707547024162-lh39a2chcjd8832aha9dr8tq2j6dqiov.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.myapplication",
+            "certificate_hash": "9f337448aa4a96103c2e5b18691c4ff670541aff"
+          }
+        },
+        {
+          "client_id": "707547024162-3mhblffer3qpq25m9gf3l7lsnqjt8ffh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5CQji8eK3v1DYUotk-nIf0VPe7Zk8g9c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "707547024162-3mhblffer3qpq25m9gf3l7lsnqjt8ffh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

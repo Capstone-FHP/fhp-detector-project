@@ -22,8 +22,22 @@ class SignUpActivity : AppCompatActivity() {
 
             if (name.isNotEmpty() && id.isNotEmpty() && pw.isNotEmpty()) {
                 if (pw == pwConfirm) {
-                    Toast.makeText(this, "${name}님, 회원가입 성공!", Toast.LENGTH_SHORT).show()
-                    finish() // 회원가입창 닫고 시작 화면으로 돌아감
+                    //[백엔드 연결]
+                    UserManager.singUp (
+                        email = id,
+                        pw=pw,
+                        name=name,
+                        onSuccess = {
+                            //서버 저장까지 성공했을 때
+                            Toast.makeText(this, "${name}님, 회원가입 성공!", Toast.LENGTH_SHORT).show()
+                            finish() // 회원가입창 닫고 시작 화면으로 돌아감
+                        },
+                        onFail = {message->
+                            //실패시
+                            Toast.makeText(this,message, Toast.LENGTH_SHORT).show()
+                        }
+                    )
+
                 } else {
                     Toast.makeText(this, "비밀번호가 일치하지 않습니다.", Toast.LENGTH_SHORT).show()
                 }
