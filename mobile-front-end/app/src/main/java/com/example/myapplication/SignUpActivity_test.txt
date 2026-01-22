@@ -1,10 +1,9 @@
-package com.example.turtleapp
+package com.example.myapplication
 
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.turtleapp.databinding.ActivitySignUpBinding
+import com.example.myapplication.databinding.ActivitySignUpBinding
 
 class SignUpActivity : AppCompatActivity() {
 
@@ -24,20 +23,14 @@ class SignUpActivity : AppCompatActivity() {
             if (name.isNotEmpty() && id.isNotEmpty() && pw.isNotEmpty()) {
                 if (pw == pwConfirm) {
                     //[백엔드 연결]
-                    UserManager.signUp (
+                    UserManager.singUp (
                         email = id,
                         pw=pw,
                         name=name,
                         onSuccess = {
                             //서버 저장까지 성공했을 때
                             Toast.makeText(this, "${name}님, 회원가입 성공!", Toast.LENGTH_SHORT).show()
-
-                            // 회원가입 성공하면 메인 액티비티로 이동
-                            val intent = Intent(this, MainActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-
-                            startActivity(intent) // MainActivity 시작
-                            finish() // 현재 SignUpActivity 종료ㅅ
+                            finish() // 회원가입창 닫고 시작 화면으로 돌아감
                         },
                         onFail = {message->
                             //실패시
