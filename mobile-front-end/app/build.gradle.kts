@@ -7,7 +7,10 @@ plugins {
 android {
     namespace = "com.example.turtleapp"
     compileSdk = 35
-    viewBinding.isEnabled = true
+    //viewBinding.isEnabled = true
+    buildFeatures {
+        viewBinding = true
+    }
 
     defaultConfig {
         applicationId = "com.example.turtleapp"
