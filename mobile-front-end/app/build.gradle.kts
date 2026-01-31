@@ -56,4 +56,14 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     // 구글 로그인 라이브러리 추가
     implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // CameraX core library
+    val camerax_version = "1.3.1"
+    // 버전을 변수로 관리하면 편리합니다.
+    implementation ("androidx.camera:camera-core:${camerax_version}")
+    implementation ("androidx.camera:camera-camera2:${camerax_version}")
+    implementation ("androidx.camera:camera-lifecycle:${camerax_version}")
+
+    // CameraX View class
+    implementation ("androidx.camera:camera-view:1.3.1")
 }
