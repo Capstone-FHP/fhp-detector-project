@@ -59,4 +59,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     // 구글 로그인 라이브러리 추가
     implementation("com.google.android.gms:play-services-auth:21.2.0")
+    // 서버 통신을 위한 Retrofit 라이브러리 추가
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 }
