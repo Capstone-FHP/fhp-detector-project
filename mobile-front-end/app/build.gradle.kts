@@ -7,10 +7,7 @@ plugins {
 android {
     namespace = "com.example.turtleapp"
     compileSdk = 35
-    //viewBinding.isEnabled = true
-    buildFeatures {
-        viewBinding = true
-    }
+    viewBinding.isEnabled = true
 
     defaultConfig {
         applicationId = "com.example.turtleapp"
@@ -59,6 +56,16 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     // 구글 로그인 라이브러리 추가
     implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // CameraX core library
+    val camerax_version = "1.3.1"
+    // 버전을 변수로 관리하면 편리합니다.
+    implementation ("androidx.camera:camera-core:${camerax_version}")
+    implementation ("androidx.camera:camera-camera2:${camerax_version}")
+    implementation ("androidx.camera:camera-lifecycle:${camerax_version}")
+
+    // CameraX View class
+    implementation ("androidx.camera:camera-view:1.3.1")
     // 서버 통신을 위한 Retrofit 라이브러리 추가
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
