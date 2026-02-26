@@ -74,7 +74,7 @@ class ActionActivity : AppCompatActivity() {
         }
     }
 
-    // [테스트용] 진짜 카메라 대신 시각적 변화만 줌
+    // 추가하긴 햇음
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
@@ -90,7 +90,7 @@ class ActionActivity : AppCompatActivity() {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
-            // 후면 카메라를 기본으로 선택
+            // 전면 카메라를 기본으로 선택
             val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
             try {

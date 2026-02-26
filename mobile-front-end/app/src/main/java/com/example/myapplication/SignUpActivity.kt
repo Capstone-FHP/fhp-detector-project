@@ -37,7 +37,7 @@ class SignUpActivity : AppCompatActivity() {
                             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
 
                             startActivity(intent) // MainActivity 시작
-                            finish() // 현재 SignUpActivity 종료ㅅ
+                            finish() // 현재 SignUpActivity 종료
                         },
                         onFail = {message->
                             //실패시

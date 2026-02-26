@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.example.turtleapp.databinding.ActivityMainBinding
+import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -25,6 +26,11 @@ class MainActivity : AppCompatActivity() {
         // 2번 버튼: 통계 확인 화면으로 이동
         binding.menuBtn2.setOnClickListener {
             val intent = Intent(this, StatisticActivity::class.java)
+            startActivity(intent)
+        }
+        // 로그아웃 버튼 (앱을 끌지 시작화면으로 돌아갈지 고민중)
+        binding.btnLogout.setOnClickListener {
+            val intent = Intent(this, StartActivity::class.java)
             startActivity(intent)
         }
     }
