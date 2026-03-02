@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.turtleapp
 
 import android.util.Log
 import com.google.firebase.Firebase
@@ -13,7 +13,7 @@ object UserManager {
     private const val TAG = "UserManager"
 
     //회원가입 기능
-    fun singUp(email: String, pw: String, name: String, onSuccess: () -> Unit, onFail: (String) -> Unit){
+    fun signUp(email: String, pw: String, name: String, onSuccess: () -> Unit, onFail: (String) -> Unit){
         //인증계정 생성
         auth.createUserWithEmailAndPassword(email,pw)
             .addOnCompleteListener {task->
