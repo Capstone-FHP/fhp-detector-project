@@ -1,4 +1,4 @@
-package com.example.myapplication
+package com.example.turtleapp
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
