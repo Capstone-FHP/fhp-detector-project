@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:707547024162:android:ddc6d79d71cca414c5f37b",
         "android_client_info": {
-          "package_name": "com.example.turtleapp"
+          "package_name": "com.example.myapplication"
         }
       },
       "oauth_client": [
@@ -20,7 +20,7 @@
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyC5CQji8eK3v1DYUotk-nIf0VPe7Zk8g9c"
+          "current_key": "AIzaSyChtPI3_N7j73NI3w3IeA50SzdumkpkxPA"
         }
       ],
       "services": {
@@ -57,7 +57,7 @@
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyC5CQji8eK3v1DYUotk-nIf0VPe7Zk8g9c"
+          "current_key": "AIzaSyChtPI3_N7j73NI3w3IeA50SzdumkpkxPA"
         }
       ],
       "services": {

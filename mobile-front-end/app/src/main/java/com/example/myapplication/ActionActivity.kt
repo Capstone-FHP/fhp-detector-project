@@ -19,12 +19,21 @@ import androidx.core.content.ContextCompat
 import com.example.turtleapp.databinding.ActivityActionBinding
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import androidx.camera.core.ImageAnalysis
+import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.tasks.core.BaseOptions
+import com.google.mediapipe.tasks.vision.core.RunningMode
+import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
+import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 
 
 class ActionActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityActionBinding
     private lateinit var cameraExecutor: ExecutorService
+
+    // [추가] 미디어파이프 객체
+    private lateinit var poseLandmarker: PoseLandmarker
 
     // 카메라 권한 받는 건데 나중에 조금 수정해야함
     // 1. 권한 요청 처리기 정의
@@ -53,10 +62,34 @@ class ActionActivity : AppCompatActivity() {
         // 카메라 작업을 위한 백그라운드 스레드 풀 초기화
         cameraExecutor = Executors.newSingleThreadExecutor()
 
+        // [추가] 앱이 켜질 때 미디어파이프 뇌(모델)를 세팅합니다.
+        setupPoseLandmarker()
+
         // 2. 동작 버튼 클릭 시 카메라 권한 체크 시작
         binding.btnDoAction.setOnClickListener {
             checkCameraPermission()
         }
+    }
+
+    // [새로 추가하는 함수 1] 미디어파이프 세팅
+    private fun setupPoseLandmarker() {
+        val baseOptions = BaseOptions.builder()
+            .setModelAssetPath("pose_landmarker_lite.task") // 아까 넣은 파일 이름
+            .build()
+
+        val options = PoseLandmarker.PoseLandmarkerOptions.builder()
+            .setBaseOptions(baseOptions)
+            .setRunningMode(RunningMode.LIVE_STREAM) // 실시간 카메라 모드
+            .setResultListener { result, _ ->
+                // 분석이 끝날 때마다 이 함수가 실행됨!
+                processPoseResult(result)
+            }
+            .setErrorListener { error ->
+                Log.e(TAG, "MediaPipe 에러: ", error)
+            }
+            .build()
+
+        poseLandmarker = PoseLandmarker.createFromOptions(this, options)
     }
 
     // 여기도 수정
@@ -75,43 +108,80 @@ class ActionActivity : AppCompatActivity() {
     }
 
     // 추가하긴 햇음
+    // [수정된 함수] startCamera()를 이렇게 통째로 바꾸세요!
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
-            // 카메라의 생명주기를 관리하는 CameraProvider
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            // 미리보기를 위한 Preview 객체 생성
-            val preview = Preview.Builder()
+            // 1. 눈으로 보는 화면 (Preview)
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+            }
+
+            // 2. [추가] 뇌로 분석할 화면 (ImageAnalysis)
+            val imageAnalyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST) // 최신 프레임만 분석 (버벅임 방지)
                 .build()
                 .also {
-                    // Preview를 XML의 PreviewView와 연결
-                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+                    it.setAnalyzer(cameraExecutor) { imageProxy ->
+                        // 카메라에서 넘어온 사진을 미디어파이프가 읽을 수 있게 변환
+                        val bitmap = imageProxy.toBitmap()
+                        val mpImage = BitmapImageBuilder(bitmap).build()
+                        val timestampMs = imageProxy.imageInfo.timestamp / 1000000
+
+                        // 미디어파이프에 분석 맡기기
+                        poseLandmarker.detectAsync(mpImage, timestampMs)
+
+                        // 처리가 끝난 프레임은 닫아줘야 다음 프레임이 들어옴
+                        imageProxy.close()
+                    }
                 }
 
-            // 전면 카메라를 기본으로 선택
             val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
 
             try {
-                // 카메라를 바인딩하기 전, 기존 바인딩이 있다면 해제
                 cameraProvider.unbindAll()
-
-                // 선택된 카메라(cameraSelector)와 Preview를 Activity의 생명주기에 바인딩
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview
-                )
-
-                // 카메라가 시작되면 UI 업데이트
-                binding.btnDoAction.text = "촬영 준비 완료"
-                binding.btnDoAction.isEnabled = true // 실제 촬영 기능을 위해 다시 활성화하거나 용도에 맞게 변경
+                // [중요] preview와 imageAnalyzer를 같이 바인딩합니다!
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
+                binding.btnDoAction.text = "분석 시작됨"
 
             } catch (exc: Exception) {
-                Log.e(TAG, "카메라 바인딩에 실패했습니다.", exc)
-                Toast.makeText(this, "카메라를 시작할 수 없습니다.", Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "카메라 바인딩 실패", exc)
             }
-
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    // [새로 추가하는 함수 2] 거북목 판별 및 UI 업데이트
+    private fun processPoseResult(result: PoseLandmarkerResult) {
+        // 사람이 화면에 감지되었다면
+        if (result.landmarks().isNotEmpty()) {
+            val landmarks = result.landmarks()[0] // 첫 번째 사람의 관절들
+
+            // 왼쪽 귀(7번)와 왼쪽 어깨(11번) 좌표 가져오기 (전면 카메라 기준)
+            val leftEar = landmarks[7]
+            val leftShoulder = landmarks[11]
+
+            // 각도 계산 수학 공식
+            val dy = leftShoulder.y() - leftEar.y()
+            val dx = leftShoulder.x() - leftEar.x()
+            val angle = Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble()))
+
+            // 수직선(90도)을 기준으로 목이 얼마나 앞으로 굽었는지 절대값 계산
+            val neckAngle = Math.abs(angle - 90.0)
+
+            // UI 화면의 글자를 바꾸는 건 반드시 Main Thread에서 해야 함
+            runOnUiThread {
+                // 예시: 기준점 15도 이상이면 거북목으로 판정
+                if (neckAngle > 15) {
+                    binding.btnDoAction.text = "🚨 거북목 감지! (${neckAngle.toInt()}도)"
+                    // 배경을 빨갛게 만들고 싶다면: binding.root.setBackgroundColor(Color.RED)
+                } else {
+                    binding.btnDoAction.text = "바른 자세 (${neckAngle.toInt()}도)"
+                }
+            }
+        }
     }
 
     private fun showPermissionSettingDialog() {
