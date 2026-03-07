@@ -3,6 +3,7 @@ package com.example.turtleapp
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -12,41 +13,44 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.turtleapp.databinding.ActivityActionBinding
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import androidx.camera.core.ImageAnalysis
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
-
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class ActionActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityActionBinding
     private lateinit var cameraExecutor: ExecutorService
-
-    // [추가] 미디어파이프 객체
     private lateinit var poseLandmarker: PoseLandmarker
 
-    // 카메라 권한 받는 건데 나중에 조금 수정해야함
-    // 1. 권한 요청 처리기 정의
+    // 🐢 거북목 판별을 위한 상태 변수들 (웹 코드에서 가져옴)
+    private var baselineRatio: Float? = null         // 영점 (바른 자세일 때의 비율)
+    private var currentLatestRatio: Float? = null    // 현재 카메라에 인식된 최신 비율
+    private val historyList = mutableListOf<Boolean>() // 스무딩 바구니 (최근 3번의 결과)
+    private var warningState = false                 // 현재 경고 상태 (화면 깜빡임 방지용)
+
+    companion object {
+        private const val TAG = "ActionActivity"
+    }
+
+    // 1. 카메라 권한 요청 처리기
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // 권한 허용됨 -> 카메라 실행 모드 진입
-            startCamera()
+            startCamera() // 권한 획득 시 카메라 켜기
         } else {
-            // 권한 거부됨
             if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {
-                // 사용자가 '다시 묻지 않음'을 선택한 경우 전용 다이얼로그 띄우기
                 showPermissionSettingDialog()
             } else {
                 Toast.makeText(this, "카메라 권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
@@ -59,56 +63,77 @@ class ActionActivity : AppCompatActivity() {
         binding = ActivityActionBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // 카메라 작업을 위한 백그라운드 스레드 풀 초기화
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // [추가] 앱이 켜질 때 미디어파이프 뇌(모델)를 세팅합니다.
+        // 미디어파이프 AI 두뇌 세팅
         setupPoseLandmarker()
 
-        // 2. 동작 버튼 클릭 시 카메라 권한 체크 시작
-        binding.btnDoAction.setOnClickListener {
-            checkCameraPermission()
+        // 화면 켜지자마자 카메라 권한 확인 및 실행
+        checkCameraPermission()
+
+        // 🎯 영점 조절 버튼 클릭 시
+        binding.btnCalibrate.setOnClickListener {
+            if (currentLatestRatio != null) {
+                // 현재 사람의 자세 비율을 기준(영점)으로 삼음
+                baselineRatio = currentLatestRatio
+                historyList.clear() // 스무딩 기록 초기화
+
+                // UI 업데이트
+                binding.tvStatus.text = "✅ 영점 조절 완료! 측정을 시작합니다."
+                binding.tvStatus.setBackgroundColor(Color.parseColor("#D4EDDA"))
+                binding.tvStatus.setTextColor(Color.parseColor("#155724"))
+
+                Toast.makeText(this, "영점 조절 완료! 자세를 유지해주세요.", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "사람이 인식되지 않았습니다. 화면 정면에 서주세요.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // ⏹️ 종료 버튼 클릭 시
+        binding.btnStop.setOnClickListener {
+            finish() // 현재 화면 끄기 (이전 화면으로 돌아감)
         }
     }
 
-    // [새로 추가하는 함수 1] 미디어파이프 세팅
+    // 미디어파이프 뼈대 인식기 초기화
     private fun setupPoseLandmarker() {
-        val baseOptions = BaseOptions.builder()
-            .setModelAssetPath("pose_landmarker_lite.task") // 아까 넣은 파일 이름
-            .build()
+        try {
+            val baseOptions = BaseOptions.builder()
+                .setModelAssetPath("pose_landmarker_lite.task") // assets 폴더에 넣은 모델 파일
+                .build()
 
-        val options = PoseLandmarker.PoseLandmarkerOptions.builder()
-            .setBaseOptions(baseOptions)
-            .setRunningMode(RunningMode.LIVE_STREAM) // 실시간 카메라 모드
-            .setResultListener { result, _ ->
-                // 분석이 끝날 때마다 이 함수가 실행됨!
-                processPoseResult(result)
-            }
-            .setErrorListener { error ->
-                Log.e(TAG, "MediaPipe 에러: ", error)
-            }
-            .build()
+            val options = PoseLandmarker.PoseLandmarkerOptions.builder()
+                .setBaseOptions(baseOptions)
+                .setRunningMode(RunningMode.LIVE_STREAM) // 실시간 카메라 모드
+                .setResultListener { result, _ ->
+                    processPoseResult(result) // 분석 끝날 때마다 호출
+                }
+                .setErrorListener { error ->
+                    Log.e(TAG, "MediaPipe 에러: ", error)
+                }
+                .build()
 
-        poseLandmarker = PoseLandmarker.createFromOptions(this, options)
+            poseLandmarker = PoseLandmarker.createFromOptions(this, options)
+        } catch (e: Exception) {
+            Log.e(TAG, "MediaPipe 초기화 실패", e)
+            Toast.makeText(this, "AI 모델을 불러오지 못했습니다.", Toast.LENGTH_LONG).show()
+        }
     }
 
-    // 여기도 수정
+    // 카메라 권한 확인
     private fun checkCameraPermission() {
         val permission = Manifest.permission.CAMERA
         when {
-            // 이미 카메라 권한이 있는 경우 바로 실행
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> {
                 startCamera()
             }
-            // 카메라 권한이 없는 경우 시스템 팝업 요청
             else -> {
                 requestPermissionLauncher.launch(permission)
             }
         }
     }
 
-    // 추가하긴 햇음
-    // [수정된 함수] startCamera()를 이렇게 통째로 바꾸세요!
+    // 카메라 실행 및 AI와 연결
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
@@ -120,22 +145,20 @@ class ActionActivity : AppCompatActivity() {
                 it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
             }
 
-            // 2. [추가] 뇌로 분석할 화면 (ImageAnalysis)
+            // 2. 뇌로 분석할 화면 (ImageAnalysis)
             val imageAnalyzer = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST) // 최신 프레임만 분석 (버벅임 방지)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
                     it.setAnalyzer(cameraExecutor) { imageProxy ->
-                        // 카메라에서 넘어온 사진을 미디어파이프가 읽을 수 있게 변환
                         val bitmap = imageProxy.toBitmap()
                         val mpImage = BitmapImageBuilder(bitmap).build()
                         val timestampMs = imageProxy.imageInfo.timestamp / 1000000
 
-                        // 미디어파이프에 분석 맡기기
+                        // 미디어파이프에 이미지 던져주기
                         poseLandmarker.detectAsync(mpImage, timestampMs)
 
-                        // 처리가 끝난 프레임은 닫아줘야 다음 프레임이 들어옴
-                        imageProxy.close()
+                        imageProxy.close() // 다음 프레임을 위해 닫아줌
                     }
                 }
 
@@ -143,47 +166,76 @@ class ActionActivity : AppCompatActivity() {
 
             try {
                 cameraProvider.unbindAll()
-                // [중요] preview와 imageAnalyzer를 같이 바인딩합니다!
+                // 화면에 보여주면서(preview) 동시에 분석(imageAnalyzer)
                 cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
-                binding.btnDoAction.text = "분석 시작됨"
-
             } catch (exc: Exception) {
-                Log.e(TAG, "카메라 바인딩 실패", exc)
+                Log.e(TAG, "카메라 바인딩에 실패했습니다.", exc)
             }
+
         }, ContextCompat.getMainExecutor(this))
     }
 
-    // [새로 추가하는 함수 2] 거북목 판별 및 UI 업데이트
+    // 두 점 사이의 거리를 구하는 수학 공식
+    private fun calculateDistance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
+        return Math.sqrt(Math.pow((x2 - x1).toDouble(), 2.0) + Math.pow((y2 - y1).toDouble(), 2.0)).toFloat()
+    }
+
+    // 🐢 실시간 거북목 분석 핵심 로직
     private fun processPoseResult(result: PoseLandmarkerResult) {
-        // 사람이 화면에 감지되었다면
         if (result.landmarks().isNotEmpty()) {
-            val landmarks = result.landmarks()[0] // 첫 번째 사람의 관절들
+            val landmarks = result.landmarks()[0] // 첫 번째 사람의 뼈대
 
-            // 왼쪽 귀(7번)와 왼쪽 어깨(11번) 좌표 가져오기 (전면 카메라 기준)
             val leftEar = landmarks[7]
+            val rightEar = landmarks[8]
             val leftShoulder = landmarks[11]
+            val rightShoulder = landmarks[12]
 
-            // 각도 계산 수학 공식
-            val dy = leftShoulder.y() - leftEar.y()
-            val dx = leftShoulder.x() - leftEar.x()
-            val angle = Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble()))
+            // 현재 얼굴 너비와 어깨 너비 계산
+            val faceWidth = calculateDistance(leftEar.x(), leftEar.y(), rightEar.x(), rightEar.y())
+            val shoulderWidth = calculateDistance(leftShoulder.x(), leftShoulder.y(), rightShoulder.x(), rightShoulder.y())
 
-            // 수직선(90도)을 기준으로 목이 얼마나 앞으로 굽었는지 절대값 계산
-            val neckAngle = Math.abs(angle - 90.0)
+            // 현재 비율 저장 (영점 조절 버튼을 누를 때 사용하기 위함)
+            currentLatestRatio = faceWidth / shoulderWidth
 
-            // UI 화면의 글자를 바꾸는 건 반드시 Main Thread에서 해야 함
-            runOnUiThread {
-                // 예시: 기준점 15도 이상이면 거북목으로 판정
-                if (neckAngle > 15) {
-                    binding.btnDoAction.text = "🚨 거북목 감지! (${neckAngle.toInt()}도)"
-                    // 배경을 빨갛게 만들고 싶다면: binding.root.setBackgroundColor(Color.RED)
-                } else {
-                    binding.btnDoAction.text = "바른 자세 (${neckAngle.toInt()}도)"
+            // 영점 조절(Calibration)이 완료된 상태라면 판별 시작
+            if (baselineRatio != null) {
+                // 1.1배(10%) 이상 비율이 커졌는지 확인 (앞으로 쏠림)
+                val isForwardLeaning = currentLatestRatio!! > (baselineRatio!! * 1.1f)
+
+                // 스무딩 로직: 최근 3번의 결과 바구니에 담기
+                historyList.add(isForwardLeaning)
+                if (historyList.size > 3) {
+                    historyList.removeAt(0) // 3개가 넘으면 가장 오래된 것 버리기
+                }
+
+                // 3번 중 2번 이상 거북목으로 판별되었는가?
+                val fhpCount = historyList.count { it } // true인 개수 세기
+                val isConfirmedFhp = fhpCount >= 2
+
+                // 상태가 바뀌었을 때만 화면(UI) 업데이트
+                if (warningState != isConfirmedFhp) {
+                    warningState = isConfirmedFhp
+
+                    runOnUiThread {
+                        if (isConfirmedFhp) {
+                            binding.tvStatus.text = "🚨 거북목 주의! 목을 뒤로 빼주세요!"
+                            binding.tvStatus.setBackgroundColor(Color.parseColor("#F8D7DA")) // 빨간색 배경
+                            binding.tvStatus.setTextColor(Color.parseColor("#721C24"))
+                        } else {
+                            binding.tvStatus.text = "✅ 바른 자세를 유지 중입니다"
+                            binding.tvStatus.setBackgroundColor(Color.parseColor("#D4EDDA")) // 연두색 배경
+                            binding.tvStatus.setTextColor(Color.parseColor("#155724"))
+                        }
+                    }
                 }
             }
+        } else {
+            // 카메라에 사람이 안 보일 때
+            currentLatestRatio = null
         }
     }
 
+    // 권한 거부 시 설정 창으로 유도하는 팝업
     private fun showPermissionSettingDialog() {
         AlertDialog.Builder(this)
             .setTitle("권한 설정 필요")
@@ -201,12 +253,9 @@ class ActionActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // 액티비티가 종료될 때 카메라 스레드를 안전하게 종료
         cameraExecutor.shutdown()
-    }
-
-    // 로그 및 상수 정의
-    companion object {
-        private const val TAG = "ActionActivity"
+        if (::poseLandmarker.isInitialized) {
+            poseLandmarker.close() // 앱 꺼질 때 AI 모델도 닫아주기
+        }
     }
 }
