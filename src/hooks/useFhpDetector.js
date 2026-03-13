@@ -6,7 +6,6 @@ const calculateDistance = (point1, point2) => {
     return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
 };
 
-// 커스텀 훅 생성 (경고 상태를 바꾸는 함수를 외부에서 받아옴)
 export function useFhpDetector(setIsFhpWarning) {
     const [isMeasuring, setIsMeasuring] = useState(false);
     const [isAiLoaded, setIsAiLoaded] = useState(false);
@@ -21,7 +20,7 @@ export function useFhpDetector(setIsFhpWarning) {
 
     const currentLandmarksRef = useRef(null);
     const historyRef = useRef([]);
-    const warningStateRef = useRef(false);
+    const warningStateRef = useRef('normal'); // 기본 상태를 'normal'로 설정
     const calibrationDataRef = useRef(null);
 
     useEffect(() => {
@@ -85,7 +84,6 @@ export function useFhpDetector(setIsFhpWarning) {
 
                 if (calibrationDataRef.current && calibrationDataRef.current.ratio > 0) {
                     const baselineRatio = calibrationDataRef.current.ratio;
-
                     const leftEar = landmarks[7];
                     const rightEar = landmarks[8];
                     const leftShoulder = landmarks[11];
@@ -96,22 +94,37 @@ export function useFhpDetector(setIsFhpWarning) {
 
                     if (currentShoulderWidth > 0) {
                         const currentRatio = currentFaceWidth / currentShoulderWidth;
-
                         console.log(`🐢 실시간 변화율: ${(currentRatio / baselineRatio).toFixed(3)}`);
 
-                        const isForwardLeaning = currentRatio > baselineRatio * 1.02;
+                        // 1. 현재 프레임의 상태 판별 (6%와 3% 기준)
+                        let currentState = 'normal';
+                        if (currentRatio >= baselineRatio * 1.06) {
+                            currentState = 'danger';  // 6% 이상 (약 5cm) - 빨간불
+                        } else if (currentRatio >= baselineRatio * 1.03) {
+                            currentState = 'warning'; // 3% 이상 (약 2.5cm) - 주황불
+                        }
 
-                        historyRef.current.push(isForwardLeaning);
+                        // 2. 히스토리에 저장 (최근 3프레임 유지)
+                        historyRef.current.push(currentState);
                         if (historyRef.current.length > 3) {
                             historyRef.current.shift();
                         }
 
-                        const fhpCount = historyRef.current.filter((isFhp) => isFhp === true).length;
-                        const isConfirmedFhp = fhpCount >= 2;
+                        // 3. 상태 안정화 로직 (깜빡임 방지)
+                        const dangerCount = historyRef.current.filter((state) => state === 'danger').length;
+                        const warningCount = historyRef.current.filter((state) => state === 'warning').length;
 
-                        if (warningStateRef.current !== isConfirmedFhp) {
-                            warningStateRef.current = isConfirmedFhp;
-                            setIsFhpWarning(isConfirmedFhp); // App.jsx로 경고 신호 보내기
+                        let confirmedState = 'normal';
+                        if (dangerCount >= 2) {
+                            confirmedState = 'danger'; // 빨간불이 2번 이상이면 최종 빨간불
+                        } else if (dangerCount + warningCount >= 2) {
+                            confirmedState = 'warning'; // 빨간불+주황불 합쳐서 2번 이상이면 최종 주황불
+                        }
+
+                        // 4. 상태가 바뀌었을 때만 App.jsx로 알림!
+                        if (warningStateRef.current !== confirmedState) {
+                            warningStateRef.current = confirmedState;
+                            setIsFhpWarning(confirmedState);
                         }
                     }
                 }
@@ -167,7 +180,7 @@ export function useFhpDetector(setIsFhpWarning) {
 
         setCalibrationData(null);
         calibrationDataRef.current = null;
-        setIsFhpWarning(false);
+        setIsFhpWarning('normal'); // 측정 종료 시 초기 상태로 복구
     };
 
     useEffect(() => {
@@ -185,15 +198,8 @@ export function useFhpDetector(setIsFhpWarning) {
         };
     }, []);
 
-    // 밖(화면)에서 쓸 수 있도록 핵심 기능들만 묶어서 반환합니다!
     return {
-        isMeasuring,
-        isAiLoaded,
-        calibrationData,
-        videoRef,
-        canvasRef,
-        startMeasurement,
-        stopMeasurement,
-        calibrate
+        isMeasuring, isAiLoaded, calibrationData, videoRef, canvasRef,
+        startMeasurement, stopMeasurement, calibrate
     };
 }

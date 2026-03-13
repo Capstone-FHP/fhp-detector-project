@@ -1,7 +1,7 @@
 // 방금 만든 '뇌(로직)' 블록을 가져옵니다.
 import { useFhpDetector } from '../hooks/useFhpDetector';
 
-export default function CameraView({ isFhpWarning, setIsFhpWarning }) {
+export default function CameraView({ fhpState, setFhpState }) {
     // 로직 파일(훅)에서 필요한 변수와 함수만 쏙 뽑아옵니다.
     const {
         isMeasuring,
@@ -12,7 +12,7 @@ export default function CameraView({ isFhpWarning, setIsFhpWarning }) {
         startMeasurement,
         stopMeasurement,
         calibrate
-    } = useFhpDetector(setIsFhpWarning);
+    } = useFhpDetector(setFhpState);
 
     return (
         <div className="flex flex-col items-center w-full max-w-3xl">

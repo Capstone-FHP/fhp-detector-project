@@ -54,8 +54,6 @@ export function useAuthLogic() {
                 createdAt: new Date()
             });
 
-            // ❌ (백엔드로 쏘는 코드 삭제됨!) ❌
-
             alert(`${name}님, 회원가입 성공!`);
             window.location.reload();
         } catch (error) {
@@ -83,7 +81,6 @@ export function useAuthLogic() {
                     name: user.displayName,
                     createdAt: new Date()
                 });
-                // ❌ (백엔드로 쏘는 코드 삭제됨!) ❌
             }
 
             window.location.reload();
