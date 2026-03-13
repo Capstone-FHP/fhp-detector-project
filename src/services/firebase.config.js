@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // TODO: 팀원이나 본인의 Firebase 콘솔에서 발급받은 실제 설정값으로 바꿔야 합니다!
 const firebaseConfig = {
@@ -17,3 +18,7 @@ const app = initializeApp(firebaseConfig);
 // 인증(로그인) 기능 내보내기
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const db = getFirestore(app);
+googleProvider.setCustomParameters({
+    prompt: 'select_account'
+});
