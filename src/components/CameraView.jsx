@@ -1,8 +1,8 @@
-// 방금 만든 '뇌(로직)' 블록을 가져옵니다.
 import { useFhpDetector } from '../hooks/useFhpDetector';
 
 export default function CameraView({ fhpState, setFhpState }) {
-    // 로직 파일(훅)에서 필요한 변수와 함수만 쏙 뽑아옵니다.
+
+    // 로직(훅)에서 필요한 도구들 꺼내오기
     const {
         isMeasuring,
         isAiLoaded,
@@ -14,66 +14,87 @@ export default function CameraView({ fhpState, setFhpState }) {
         calibrate
     } = useFhpDetector(setFhpState);
 
+    // 🎨 1. 상태에 맞춰 카메라 테두리 색상 3단계 변경
+    const getBorderColor = () => {
+        if (fhpState === 'danger') return "border-red-500";       // 빨간불 (위험)
+        if (fhpState === 'warning') return "border-orange-500";   // 주황불 (주의)
+        return "border-blue-400";                                 // 정상
+    };
+
+    // 📝 2. 상태에 맞춰 화면에 띄울 경고 메시지 3단계 변경
+    const getWarningMessage = () => {
+        if (fhpState === 'danger') return "🚨 거북목 위험! (5cm 이상) 당장 자세를 교정하세요!";
+        if (fhpState === 'warning') return "⚠️ 거북목 주의! (2.5cm 이상) 목을 뒤로 당기세요.";
+        return "✅ 바른 자세를 유지 중입니다.";
+    };
+
     return (
-        <div className="flex flex-col items-center w-full max-w-3xl">
-            {!isMeasuring ? (
-                <>
-                    <p className="text-xl text-gray-700 bg-white p-6 rounded-xl shadow-lg mb-8 text-center">
-                        {isAiLoaded ? "AI 모델 준비 완료! 측정 버튼을 눌러보세요." : "AI 모델을 불러오는 중입니다..."}
-                    </p>
-                    <button
-                        onClick={startMeasurement}
-                        disabled={!isAiLoaded}
-                        className={`px-8 py-4 text-white text-xl font-bold rounded-xl transition shadow-md ${isAiLoaded ? "bg-blue-500 hover:bg-blue-600" : "bg-gray-400 cursor-not-allowed"
-                            }`}
-                    >
-                        {isAiLoaded ? "측정 시작하기" : "로딩 중..."}
-                    </button>
-                </>
-            ) : (
-                <>
-                    {calibrationData ? (
-                        <div className={`w-full p-4 mb-4 rounded-xl text-center font-bold text-2xl shadow-md transition-colors ${isFhpWarning ? "bg-red-500 text-white" : "bg-green-500 text-white"
-                            }`}>
-                            {isFhpWarning ? "🚨 거북목 주의! 목을 뒤로 빼주세요!" : "✅ 바른 자세를 유지 중입니다"}
-                        </div>
-                    ) : (
-                        <div className="w-full p-4 mb-4 rounded-xl text-center font-bold text-xl bg-yellow-400 text-yellow-900 shadow-md">
-                            먼저 바른 자세를 취한 뒤 '영점 조절' 버튼을 눌러주세요.
-                        </div>
-                    )}
+        <div className="flex flex-col items-center gap-6 w-full max-w-4xl">
 
-                    <div className={`w-full bg-black rounded-2xl overflow-hidden shadow-2xl mb-6 relative aspect-video border-4 transition-colors ${isFhpWarning ? "border-red-500" : calibrationData ? "border-green-500" : "border-transparent"
-                        }`}>
-                        <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className="absolute top-0 left-0 w-full h-full object-cover transform -scale-x-100"
-                        ></video>
-                        <canvas
-                            ref={canvasRef}
-                            className="absolute top-0 left-0 w-full h-full object-cover transform -scale-x-100 z-10"
-                        ></canvas>
+            {/* 측정 중 & 영점 조절 완료 시에만 상태 메시지 띄우기 */}
+            {isMeasuring && calibrationData && (
+                <div className={`p-4 rounded-xl font-bold text-xl text-white transition-colors duration-500 shadow-md ${fhpState === 'danger' ? "bg-red-500" :
+                        fhpState === 'warning' ? "bg-orange-500" : "bg-green-500"
+                    }`}>
+                    {getWarningMessage()}
+                </div>
+            )}
+
+            {/* 카메라 화면 영역 (테두리 색상이 getBorderColor()에 따라 변함) */}
+            <div className={`relative rounded-3xl overflow-hidden shadow-2xl border-8 transition-colors duration-500 ${getBorderColor()}`}>
+
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-[640px] h-[480px] object-cover bg-gray-800 scale-x-[-1]"
+                />
+
+                <canvas
+                    ref={canvasRef}
+                    className="absolute top-0 left-0 w-full h-full object-cover scale-x-[-1]"
+                />
+
+                {/* 측정 시작 전 가림막 화면 */}
+                {!isMeasuring && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-60 text-white p-6 text-center z-10">
+                        <h3 className="text-3xl font-bold mb-3">거북목 측정기</h3>
+                        <p className="mb-8 text-gray-200">카메라를 켜고 정면을 바라본 뒤 영점 조절을 해주세요.</p>
+                        {!isAiLoaded ? (
+                            <button disabled className="px-8 py-4 bg-gray-500 rounded-full font-bold text-lg">
+                                AI 모델 로딩 중... ⏳
+                            </button>
+                        ) : (
+                            <button
+                                onClick={startMeasurement}
+                                className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-full font-bold text-lg shadow-lg transition transform hover:scale-105"
+                            >
+                                카메라 켜기 📸
+                            </button>
+                        )}
                     </div>
+                )}
+            </div>
 
-                    <div className="flex gap-4">
+            {/* 하단 컨트롤 버튼 영역 */}
+            <div className="flex gap-4">
+                {isMeasuring && (
+                    <>
                         <button
                             onClick={calibrate}
-                            className="px-6 py-4 bg-green-500 text-white text-xl font-bold rounded-xl hover:bg-green-600 transition shadow-md"
+                            className="px-8 py-4 bg-green-500 hover:bg-green-600 text-white font-bold rounded-2xl shadow-lg transition transform hover:scale-105"
                         >
-                            🎯 현재 자세로 영점 조절
+                            🎯 정자세 영점 조절 (필수)
                         </button>
                         <button
                             onClick={stopMeasurement}
-                            className="px-6 py-4 bg-gray-500 text-white text-xl font-bold rounded-xl hover:bg-gray-600 transition shadow-md"
+                            className="px-8 py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-lg transition transform hover:scale-105"
                         >
-                            종료하기
+                            🛑 측정 종료
                         </button>
-                    </div>
-                </>
-            )}
+                    </>
+                )}
+            </div>
         </div>
     );
 }
