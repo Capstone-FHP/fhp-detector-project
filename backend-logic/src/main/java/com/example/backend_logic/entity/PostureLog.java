@@ -9,49 +9,55 @@ public class PostureLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String userId;
+    private String uid;
     private String status;
-    private LocalDateTime  timestamp; // 저장 시간 자동 기록용
+    private String  timestamp; // 저장 시간 자동 기록용
+    private String sessionId;
 
     // 기본 생성자
     public PostureLog() {}
 
     // 생성자 수정
-    public PostureLog(String userId, String status) {
-        this.userId = userId;
+    public PostureLog(String uid, String status,String timestamp,String sessionId) {
+        this.uid = uid;
         this.status = status;
-        this.timestamp =LocalDateTime.now(); // 현재 시간 자동 저장
+        this.timestamp =timestamp; // 현재 시간 자동 저장
+        this.sessionId=sessionId;
     }
 
     public Long getId() {
         return id;
     }
 
-    public String getUserId() {
-        return userId;
+    public String getUid() {
+        return uid;
     }
 
     public String getStatus() {
         return status;
     }
 
-    public LocalDateTime getTimestamp() {
+    public String getTimestamp() {
         return timestamp;
     }
+
+    public String getSessionId(){return sessionId;}
 
     public void setId(Long id) {
         this.id = id;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
     public void setStatus(String status) {
         this.status = status;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
+    public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
     }
+
+    public void setSessionId(String sessionId) { this.sessionId=sessionId;}
 }
