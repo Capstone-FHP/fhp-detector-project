@@ -1,32 +1,57 @@
 package com.example.backend_logic.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.*; // Spring Boot 버전에 따라 javax.persistence일 수 있음
 import java.time.LocalDateTime;
 
-@Entity // 이 클래스는 DB 테이블이라고 알려줌
-@Table(name = "posture_logs") // 테이블 이름 지정
+@Entity
 public class PostureLog {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // 데이터 번호 (1, 2, 3... 자동 증가)
+    private Long id;
 
-    private String userId; // 사용자 아이디 (Firebase UID)
-
-    private String status; // "TURTLE" (거북목) or "NORMAL" (정상)
-
-    private LocalDateTime detectedAt; // 감지된 시간
+    private String userId;
+    private String status;
+    private LocalDateTime  timestamp; // 저장 시간 자동 기록용
 
     // 기본 생성자
     public PostureLog() {}
 
-    // 데이터를 쉽게 넣기 위한 생성자
+    // 생성자 수정
     public PostureLog(String userId, String status) {
         this.userId = userId;
         this.status = status;
-        this.detectedAt = LocalDateTime.now(); // 현재 시간 자동 저장
+        this.timestamp =LocalDateTime.now(); // 현재 시간 자동 저장
     }
 
-    // Getter, Setter 필요 (Lombok 라이브러리 쓰면 @Getter로 생략 가능)
-    // 일단은 없으면 안되니 간단히 추가한다고 가정
+    public Long getId() {
+        return id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
 }
