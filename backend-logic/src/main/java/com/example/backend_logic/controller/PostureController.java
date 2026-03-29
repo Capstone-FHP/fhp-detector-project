@@ -1,8 +1,10 @@
 package com.example.backend_logic.controller;
 
 import com.example.backend_logic.dto.PostureLogRequestDto;
+import com.example.backend_logic.dto.PostureSummaryResponseDto;
 import com.example.backend_logic.entity.PostureLog;
 import com.example.backend_logic.repository.PostureRepository;
+import com.example.backend_logic.service.PostureService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -14,9 +16,12 @@ import java.util.List;
 public class PostureController {
 
     private final PostureRepository postureRepository;
+    private final PostureService postureService;
 
-    public PostureController(PostureRepository postureRepository) {
+    public PostureController(PostureRepository postureRepository, PostureService postureService) {
+
         this.postureRepository = postureRepository;
+        this.postureService = postureService;
     }
 
     @PostMapping("/log")
@@ -39,10 +44,19 @@ public class PostureController {
         return ResponseEntity.ok("거북목 기록 DB 저장 완료!");
     }
 
+    //특정 세션의 모든 로그 조회 API
     @GetMapping("/logs")
     public ResponseEntity<List<PostureLog>> getLogsBySession(@RequestParam String sessionId) {
         // 쿼리 파라미터로 받은 sessionId에 해당하는 데이터만 가져옴
         List<PostureLog> logs = postureRepository.findBySessionId(sessionId);
         return ResponseEntity.ok(logs);
+    }
+
+    //특정 세션의 거북목 횟수 요약 API
+    @GetMapping("/summary")
+    public ResponseEntity<PostureSummaryResponseDto> getSessionSummary(@RequestParam String sessionId){
+        PostureSummaryResponseDto summary= postureService.getSessionSummary(sessionId);
+
+        return ResponseEntity.ok(summary);
     }
 }
