@@ -15,6 +15,9 @@ export default function CameraView({ fhpState, setFhpState, user }) {
     const pipContainerRef = useRef(null);
     const lastSentState = useRef(null);
 
+    // 💡 [버그 픽스 1] PIP 창에서도 최신 기능들을 쓸 수 있도록 Ref(비상 연락망)를 만듭니다!
+    const handlersRef = useRef({});
+
     const {
         isMeasuring, isAiLoaded, calibrationData, videoRef, canvasRef,
         startMeasurement, stopMeasurement, calibrate
@@ -61,6 +64,11 @@ export default function CameraView({ fhpState, setFhpState, user }) {
         }
     };
 
+    // 💡 [버그 픽스 2] 매번 화면이 바뀔 때마다 최신 함수들을 비상 연락망에 업데이트 해둡니다.
+    useEffect(() => {
+        handlersRef.current = { calibrate, handleStopMeasurement };
+    });
+
     const getCameraFrameStyle = () => {
         if (fhpState === 'danger') return "ring-4 ring-red-500 shadow-[0_0_50px_rgba(239,68,68,0.5)]";
         if (fhpState === 'warning') return "ring-4 ring-orange-400 shadow-[0_0_50px_rgba(249,115,22,0.5)]";
@@ -79,7 +87,48 @@ export default function CameraView({ fhpState, setFhpState, user }) {
         return "아주 좋습니다. 올바른 경추 정렬이 유지되고 있습니다.";
     };
 
-    const toggleDocumentPIP = async () => { /* 기존 로직 동일 */ };
+    const toggleDocumentPIP = async () => {
+        if (isPipMode) {
+            if (window.documentPictureInPicture?.window) window.documentPictureInPicture.window.close();
+            return;
+        }
+        if (!('documentPictureInPicture' in window)) {
+            alert("이 브라우저는 최신 PIP 기능을 지원하지 않습니다.");
+            return;
+        }
+        try {
+            const pipWindow = await window.documentPictureInPicture.requestWindow({ width: 360, height: 550 });
+            [...document.styleSheets].forEach((sheet) => {
+                try {
+                    const cssRules = [...sheet.cssRules].map((rule) => rule.cssText).join('');
+                    const style = document.createElement('style'); style.textContent = cssRules;
+                    pipWindow.document.head.appendChild(style);
+                } catch (e) {
+                    const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = sheet.href;
+                    pipWindow.document.head.appendChild(link);
+                }
+            });
+
+            pipWindow.document.body.append(pipContainerRef.current);
+            setIsPipMode(true);
+
+            // 💡 [핵심 버그 해결] 끊어진 React 연결선 대신, PIP 창 자체에 클릭 센서를 달아버립니다!
+            pipWindow.document.addEventListener('click', (e) => {
+                // 어떤 버튼이 눌렸는지 ID로 추적해서 강제로 함수를 실행시킵니다.
+                if (e.target.closest('#pip-return-btn')) pipWindow.close();
+                if (e.target.closest('#pip-calibrate-btn')) handlersRef.current.calibrate();
+                if (e.target.closest('#pip-stop-btn')) handlersRef.current.handleStopMeasurement();
+            });
+
+            pipWindow.addEventListener("pagehide", () => {
+                const wrapper = document.getElementById("camera-wrapper");
+                if (wrapper && pipContainerRef.current) wrapper.append(pipContainerRef.current);
+                setIsPipMode(false);
+            });
+        } catch (error) {
+            console.error("PIP 창 열기 실패:", error);
+        }
+    };
 
     return (
         <div id="camera-wrapper" className="flex flex-col items-center w-full h-full min-h-0 relative">
@@ -93,7 +142,7 @@ export default function CameraView({ fhpState, setFhpState, user }) {
                 className={`w-full max-w-[1600px] h-full min-h-0 transition-all duration-300 ${isPipMode ? 'flex flex-col items-center p-5 bg-slate-50 dark:bg-slate-900 justify-center gap-4' : 'flex flex-col lg:flex-row gap-4 lg:gap-6'}`}
             >
 
-                {/* 🏥 왼쪽: 카메라 비디오 (flex-1로 화면 꽉 채움) */}
+                {/* 🏥 왼쪽: 카메라 비디오 */}
                 <div className={`relative flex-1 h-full min-h-0 overflow-hidden bg-slate-900 rounded-[2rem] transition-all duration-500 flex items-center justify-center ${displayIsMeasuring ? getCameraFrameStyle() : 'border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-800'}`}>
                     <video ref={videoRef} autoPlay playsInline className={`w-full h-full object-cover scale-x-[-1] ${isAdminTesting ? 'hidden' : 'block'}`} />
                     <canvas ref={canvasRef} className={`absolute top-0 left-0 w-full h-full object-cover scale-x-[-1] ${isAdminTesting ? 'hidden' : 'block'}`} />
@@ -119,11 +168,10 @@ export default function CameraView({ fhpState, setFhpState, user }) {
                     )}
                 </div>
 
-                {/* 🏥 오른쪽: 컨트롤 패널 (노트북 화면 최적화) */}
+                {/* 🏥 오른쪽: 컨트롤 패널 (웹용) */}
                 {(!isPipMode && displayIsMeasuring) && (
                     <div className="w-full lg:w-[340px] xl:w-[380px] shrink-0 h-full flex flex-col gap-4 animate-fadeInRight">
 
-                        {/* 칸 1: 상태 모니터 (크기 고정) */}
                         <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 shrink-0">
                             <div className="flex justify-between items-center mb-4">
                                 <h4 className="text-xs font-bold text-slate-400 tracking-wider">STATUS</h4>
@@ -137,7 +185,6 @@ export default function CameraView({ fhpState, setFhpState, user }) {
                             </p>
                         </div>
 
-                        {/* 💡 칸 2: AI 가이드 (화면이 좁아지면 여기서 스크롤 발생!) */}
                         <div className="flex-1 min-h-[120px] overflow-y-auto bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col">
                             <h4 className="text-xs font-bold text-slate-400 tracking-wider mb-4 shrink-0">GUIDE</h4>
                             <div className="flex-1 bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600 p-4 rounded-xl text-slate-600 dark:text-slate-300 font-medium text-sm leading-relaxed mb-4">
@@ -148,12 +195,24 @@ export default function CameraView({ fhpState, setFhpState, user }) {
                             </button>
                         </div>
 
-                        {/* 칸 3: 시스템 제어 (크기 고정) */}
                         <div className="bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 shrink-0">
                             <button onClick={handleStopMeasurement} className="w-full py-4 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white font-bold transition shadow-md rounded-xl">
                                 🛑 측정 종료
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {/* 🏥 하단: PIP 모드용 버튼 (React onClick 제거하고 ID만 남겨둠!) */}
+                {isPipMode && (
+                    <div className="shrink-0 flex gap-2 w-full justify-center">
+                        <button id="pip-return-btn" className="px-4 py-3 bg-slate-800 dark:bg-slate-700 text-white font-bold rounded-xl text-sm w-full max-w-[120px]">웹 복귀 ↩️</button>
+                        {isMeasuring && (
+                            <>
+                                <button id="pip-calibrate-btn" className="px-4 py-3 bg-green-500 text-white font-bold rounded-xl text-sm w-full max-w-[120px]">영점조절 🎯</button>
+                                <button id="pip-stop-btn" className="px-4 py-3 bg-red-500 text-white font-bold rounded-xl text-sm w-full max-w-[120px]">종료 🛑</button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
