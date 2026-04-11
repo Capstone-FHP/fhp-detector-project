@@ -94,7 +94,7 @@ export function useFhpDetector(setIsFhpWarning) {
 
                     if (currentShoulderWidth > 0) {
                         const currentRatio = currentFaceWidth / currentShoulderWidth;
-                        console.log(`🐢 실시간 변화율: ${(currentRatio / baselineRatio).toFixed(3)}`);
+                        //console.log(`🐢 실시간 변화율: ${(currentRatio / baselineRatio).toFixed(3)}`);
 
                         // 1. 현재 프레임의 상태 판별 (6%와 3% 기준)
                         let currentState = 'normal';
