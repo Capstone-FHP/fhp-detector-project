@@ -12,49 +12,48 @@ export default function PostureResultModal({ isOpen, onClose, summaryData }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
 
-            <div className="bg-white text-slate-800 w-full max-w-md rounded-3xl p-8 shadow-2xl transform transition-all animate-slideUp border border-slate-100">
+            <div className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-md rounded-3xl p-8 shadow-2xl transform transition-all animate-slideUp border border-slate-100 dark:border-slate-700">
 
                 <div className="text-center mb-8">
-                    <div className="inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-bold mb-3 border border-blue-100">
+                    <div className="inline-block bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-bold mb-3 border border-blue-100 dark:border-blue-800/50">
                         측정 종료
                     </div>
                     <h2 className="text-2xl font-extrabold mb-2 tracking-tight">AI 정밀 진단 리포트</h2>
-                    <p className="text-slate-500 font-medium text-sm px-2 break-keep">{getFeedbackMessage()}</p>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-sm px-2 break-keep">{getFeedbackMessage()}</p>
                 </div>
 
-                {/* 통계 박스 (헬스케어 대시보드 스타일) */}
                 <div className="grid grid-cols-2 gap-3 mb-8">
 
-                    <div className="col-span-2 bg-slate-50 rounded-2xl p-5 flex items-center justify-between border border-slate-100">
-                        <span className="text-slate-500 font-bold text-sm">⏱️ 총 측정 횟수</span>
+                    <div className="col-span-2 bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-5 flex items-center justify-between border border-slate-100 dark:border-slate-700/50">
+                        <span className="text-slate-500 dark:text-slate-400 font-bold text-sm">⏱️ 총 측정 횟수</span>
                         <div className="text-right">
-                            <span className="text-3xl font-black text-slate-700">{data.totalMeasurements}</span>
-                            <span className="text-sm text-slate-400 ml-1 font-medium">회</span>
+                            <span className="text-3xl font-black text-slate-700 dark:text-slate-200">{data.totalMeasurements}</span>
+                            <span className="text-sm text-slate-400 dark:text-slate-500 ml-1 font-medium">회</span>
                         </div>
                     </div>
 
-                    <div className="bg-orange-50 rounded-2xl p-5 flex flex-col items-center justify-center border border-orange-100">
-                        <span className="text-orange-500 font-bold mb-1 text-sm">⚠️ 주의 (Warning)</span>
+                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-2xl p-5 flex flex-col items-center justify-center border border-orange-100 dark:border-orange-900/30">
+                        <span className="text-orange-500 dark:text-orange-400 font-bold mb-1 text-sm">⚠️ 주의 (Warning)</span>
                         <div>
-                            <span className="text-3xl font-black text-orange-600">{data.warningCount}</span>
-                            <span className="text-sm text-orange-400 ml-1 font-medium">회</span>
+                            <span className="text-3xl font-black text-orange-600 dark:text-orange-500">{data.warningCount}</span>
+                            <span className="text-sm text-orange-400 dark:text-orange-600/70 ml-1 font-medium">회</span>
                         </div>
                     </div>
 
-                    <div className="bg-red-50 rounded-2xl p-5 flex flex-col items-center justify-center border border-red-100">
-                        <span className="text-red-500 font-bold mb-1 text-sm">🚨 위험 (Danger)</span>
+                    <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-5 flex flex-col items-center justify-center border border-red-100 dark:border-red-900/30">
+                        <span className="text-red-500 dark:text-red-400 font-bold mb-1 text-sm">🚨 위험 (Danger)</span>
                         <div>
-                            <span className="text-3xl font-black text-red-600">{data.dangerCount}</span>
-                            <span className="text-sm text-red-400 ml-1 font-medium">회</span>
+                            <span className="text-3xl font-black text-red-600 dark:text-red-500">{data.dangerCount}</span>
+                            <span className="text-sm text-red-400 dark:text-red-600/70 ml-1 font-medium">회</span>
                         </div>
                     </div>
                 </div>
 
                 <button
                     onClick={onClose}
-                    className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-lg py-4 rounded-xl shadow-md transition transform hover:-translate-y-0.5"
+                    className="w-full bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white font-bold text-lg py-4 rounded-xl shadow-md transition transform hover:-translate-y-0.5"
                 >
                     확인 및 닫기
                 </button>
