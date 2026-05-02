@@ -20,7 +20,7 @@ export function useFhpDetector(setIsFhpWarning) {
 
     const currentLandmarksRef = useRef(null);
     const historyRef = useRef([]);
-    const warningStateRef = useRef('normal'); // 기본 상태를 'normal'로 설정
+    const warningStateRef = useRef('normal');
     const calibrationDataRef = useRef(null);
 
     useEffect(() => {
@@ -84,6 +84,7 @@ export function useFhpDetector(setIsFhpWarning) {
 
                 if (calibrationDataRef.current && calibrationDataRef.current.ratio > 0) {
                     const baselineRatio = calibrationDataRef.current.ratio;
+
                     const leftEar = landmarks[7];
                     const rightEar = landmarks[8];
                     const leftShoulder = landmarks[11];
@@ -93,15 +94,15 @@ export function useFhpDetector(setIsFhpWarning) {
                     const currentShoulderWidth = calculateDistance(leftShoulder, rightShoulder);
 
                     if (currentShoulderWidth > 0) {
+                        // ── 오직 '귀/어깨 비율' 하나만 가지고 판별합니다 ──
                         const currentRatio = currentFaceWidth / currentShoulderWidth;
-                        //console.log(`🐢 실시간 변화율: ${(currentRatio / baselineRatio).toFixed(3)}`);
+                        const earChange = currentRatio / baselineRatio;
 
-                        // 1. 현재 프레임의 상태 판별 (6%와 3% 기준)
                         let currentState = 'normal';
-                        if (currentRatio >= baselineRatio * 1.06) {
-                            currentState = 'danger';  // 6% 이상 (약 5cm) - 빨간불
-                        } else if (currentRatio >= baselineRatio * 1.03) {
-                            currentState = 'warning'; // 3% 이상 (약 2.5cm) - 주황불
+                        if (earChange >= 1.06) {
+                            currentState = 'danger';  // 6% 이상 전진 - 빨간불
+                        } else if (earChange >= 1.03) {
+                            currentState = 'warning'; // 3% 이상 전진 - 주황불
                         }
 
                         // 2. 히스토리에 저장 (최근 3프레임 유지)
@@ -111,17 +112,17 @@ export function useFhpDetector(setIsFhpWarning) {
                         }
 
                         // 3. 상태 안정화 로직 (깜빡임 방지)
-                        const dangerCount = historyRef.current.filter((state) => state === 'danger').length;
-                        const warningCount = historyRef.current.filter((state) => state === 'warning').length;
+                        const dangerCount = historyRef.current.filter((s) => s === 'danger').length;
+                        const warningCount = historyRef.current.filter((s) => s === 'warning').length;
 
                         let confirmedState = 'normal';
                         if (dangerCount >= 2) {
-                            confirmedState = 'danger'; // 빨간불이 2번 이상이면 최종 빨간불
+                            confirmedState = 'danger';
                         } else if (dangerCount + warningCount >= 2) {
-                            confirmedState = 'warning'; // 빨간불+주황불 합쳐서 2번 이상이면 최종 주황불
+                            confirmedState = 'warning';
                         }
 
-                        // 4. 상태가 바뀌었을 때만 App.jsx로 알림!
+                        // 4. 상태가 바뀌었을 때만 App.jsx로 알림
                         if (warningStateRef.current !== confirmedState) {
                             warningStateRef.current = confirmedState;
                             setIsFhpWarning(confirmedState);
@@ -146,6 +147,7 @@ export function useFhpDetector(setIsFhpWarning) {
 
         if (shoulderWidth === 0) return;
 
+        // 영점 조절도 오직 귀/어깨 비율만 저장합니다.
         const baselineRatio = faceWidth / shoulderWidth;
 
         setCalibrationData({ ratio: baselineRatio });
@@ -180,7 +182,7 @@ export function useFhpDetector(setIsFhpWarning) {
 
         setCalibrationData(null);
         calibrationDataRef.current = null;
-        setIsFhpWarning('normal'); // 측정 종료 시 초기 상태로 복구
+        setIsFhpWarning('normal');
     };
 
     useEffect(() => {

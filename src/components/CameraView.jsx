@@ -12,40 +12,49 @@ export default function CameraView({ fhpState, setFhpState, user }) {
     const pipContainerRef = useRef(null);
     const handlersRef = useRef({});
 
-    // 💡 비밀 장부가 이제 '횟수'가 아니라 '초(Seconds)'를 기록합니다!
+    // 💡 시간 누적 장부
     const localStatsRef = useRef({ totalSeconds: 0, warningSeconds: 0, dangerSeconds: 0 });
     const lastNotificationTime = useRef(0);
 
-    // 💡 유저님이 만드신 useFhpDetector 연결!
+    // 🌟 [최적화 핵심] 타이머가 리셋되지 않도록 현재 상태를 몰래 지켜보는 거울(Ref)
+    const currentStateRef = useRef(fhpState);
+
+    // 🌟 상태가 바뀔 때마다 거울(Ref)에 최신 상태를 비춰줌
+    useEffect(() => {
+        currentStateRef.current = fhpState;
+    }, [fhpState]);
+
     const {
         isMeasuring, isAiLoaded, calibrationData, videoRef, canvasRef,
         startMeasurement, stopMeasurement, calibrate
     } = useFhpDetector(setFhpState);
 
-    // ⏱️ [핵심] 1초마다 시계가 똑딱거리며 시간을 누적합니다.
+    // ⏱️ 1초 타이머 (의존성 배열에서 fhpState를 빼서 절대 멈추거나 리셋되지 않음!)
     useEffect(() => {
         if (!isMeasuring || !currentSessionId) return;
 
         const timer = setInterval(() => {
-            localStatsRef.current.totalSeconds += 1; // 총 모니터링 시간 +1초
+            localStatsRef.current.totalSeconds += 1;
 
-            // 현재 상태가 주의/위험이면 해당 시간도 1초씩 누적
-            if (fhpState === 'warning') {
+            // 🌟 렌더링에 영향을 주지 않는 거울(Ref)에서 현재 상태를 읽어옴
+            const currentState = currentStateRef.current;
+
+            if (currentState === 'warning') {
                 localStatsRef.current.warningSeconds += 1;
-            } else if (fhpState === 'danger') {
+            } else if (currentState === 'danger') {
                 localStatsRef.current.dangerSeconds += 1;
             }
-        }, 1000); // 1000ms = 1초
+        }, 1000);
 
         return () => clearInterval(timer);
-    }, [isMeasuring, currentSessionId, fhpState]);
+    }, [isMeasuring, currentSessionId]);
 
-    // 🔔 알림창 (한 번 뜨면 10초 쿨타임 유지)
+    // 🔔 OS 브라우저 알림 (한 번 뜨면 10초 쿨타임 유지)
     useEffect(() => {
         if (!isMeasuring || fhpState === 'normal') return;
 
         const now = Date.now();
-        if (now - lastNotificationTime.current < 10000) return; // 10초 쿨타임
+        if (now - lastNotificationTime.current < 10000) return;
 
         if ("Notification" in window && Notification.permission === "granted") {
             const notification = new Notification(
@@ -69,17 +78,16 @@ export default function CameraView({ fhpState, setFhpState, user }) {
     const handleStopMeasurement = async () => {
         stopMeasurement();
 
-        // 📉 시간 기반 점수 계산 (주의 1초당 -0.5점, 위험 1초당 -1.5점 감점)
+        // 📉 점수 계산 (주의 1초당 -0.5점, 위험 1초당 -1.5점 감점)
         const warningPenalty = localStatsRef.current.warningSeconds * 0.5;
         const dangerPenalty = localStatsRef.current.dangerSeconds * 1.5;
-        // 소수점 반올림 후 0점 밑으로 안 내려가게 방어
         const score = Math.max(0, Math.round(100 - warningPenalty - dangerPenalty));
 
         const sessionData = {
             userId: user?.uid,
             sessionId: currentSessionId,
             score: score,
-            totalSeconds: localStatsRef.current.totalSeconds, // 횟수가 아니라 '초'를 저장
+            totalSeconds: localStatsRef.current.totalSeconds,
             warningSeconds: localStatsRef.current.warningSeconds,
             dangerSeconds: localStatsRef.current.dangerSeconds,
             createdAt: new Date().toISOString()
@@ -87,7 +95,6 @@ export default function CameraView({ fhpState, setFhpState, user }) {
 
         if (user) await savePostureSession(sessionData);
 
-        // 모달창에 시간 데이터와 계산된 점수 넘기기
         setSummaryData({ ...localStatsRef.current, score });
         setShowResultModal(true);
         setCurrentSessionId(null);
@@ -97,7 +104,7 @@ export default function CameraView({ fhpState, setFhpState, user }) {
 
     useEffect(() => { handlersRef.current = { calibrate, handleStopMeasurement }; });
 
-    // PIP 모드 전환
+    // PIP 모드 관련 로직
     const toggleDocumentPIP = async () => {
         if (isPipMode) { window.documentPictureInPicture?.window?.close(); return; }
         try {

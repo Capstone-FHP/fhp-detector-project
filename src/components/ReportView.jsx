@@ -1,92 +1,118 @@
 import { useState, useEffect } from 'react';
-import { getUserHistory } from '../services/fhpApi';
+import PostureResultModal from './PostureResultModal';
+// import { getUserHistory } from '../services/fhpApi'; // 백엔드 완성 시 주석 해제
 
 export default function ReportView({ setScreen, user }) {
-    const [reports, setReports] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [history, setHistory] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // 💡 화면 켜질 때 서버에서 유저 기록 가져오기
+    // 모달 제어용 상태
+    const [selectedReport, setSelectedReport] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
     useEffect(() => {
-        const loadHistory = async () => {
+        // 🛠️ UI 테스트용 가짜 데이터 (Mock Data)
+        const fetchMockData = () => {
+            const mockHistory = [
+                { sessionId: 's1', score: 95, totalSeconds: 3600, warningSeconds: 120, dangerSeconds: 0, createdAt: "2026-05-02T14:30:00" },
+                { sessionId: 's2', score: 65, totalSeconds: 1800, warningSeconds: 500, dangerSeconds: 300, createdAt: "2026-05-01T10:15:00" },
+                { sessionId: 's3', score: 82, totalSeconds: 5400, warningSeconds: 600, dangerSeconds: 50, createdAt: "2026-04-30T16:45:00" },
+            ];
+            setHistory(mockHistory);
+            setIsLoading(false);
+        };
+
+        setTimeout(fetchMockData, 500);
+
+        /* 💡 백엔드 연동 시 아래 코드로 교체!
+        const loadRealData = async () => {
             if (user?.uid) {
                 const data = await getUserHistory(user.uid);
-                // 서버에서 가져온 배열 저장 (최신순 정렬 권장)
-                setReports(data || []);
+                setHistory(data);
             }
-            setLoading(false);
+            setIsLoading(false);
         };
-        loadHistory();
+        loadRealData();
+        */
     }, [user]);
 
-    if (loading) {
-        return (
-            <div className="w-full h-full flex items-center justify-center animate-fadeIn">
-                <div className="text-lg font-bold text-slate-500">
-                    <span className="animate-spin inline-block mr-2">⏳</span> 서버에서 측정 기록을 불러오는 중...
-                </div>
-            </div>
-        );
-    }
+    const formatDate = (isoString) => {
+        const date = new Date(isoString);
+        return `${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    };
 
-    const hasData = reports && reports.length > 0;
+    const formatSimpleDuration = (sec) => {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        if (h > 0) return `${h}시간 ${m}분`;
+        return `${m}분`;
+    };
+
+    const handleReportClick = (sessionData) => {
+        setSelectedReport(sessionData);
+        setIsModalOpen(true);
+    };
 
     return (
-        <div className="w-full max-w-[1000px] mx-auto h-full flex flex-col pb-10 p-6 animate-fadeIn">
+        <div className="w-full max-w-3xl mx-auto animate-fadeIn">
 
-            <div className="flex justify-between items-center mb-10">
+            {/* 💡 과거 기록 클릭 시 뜨는 모달창 */}
+            <PostureResultModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                summaryData={selectedReport}
+            />
+
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">
-                        My <span className="text-blue-600">History</span>
-                    </h2>
-                    <p className="text-slate-500 font-medium">과거 측정 기록을 확인할 수 있습니다.</p>
+                    <h2 className="text-3xl font-extrabold text-slate-800 dark:text-white mb-2">나의 AI 리포트 📊</h2>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium">지금까지 측정된 모든 경추 건강 기록입니다.</p>
                 </div>
                 <button
                     onClick={() => setScreen('home')}
-                    className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-2xl font-bold shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                    className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl transition"
                 >
-                    ⬅️ 메인으로
+                    돌아가기 ↩️
                 </button>
             </div>
 
-            {!hasData ? (
-                /* 🚫 서버에 데이터가 없을 때 */
-                <div className="flex-1 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center p-20">
-                    <div className="text-6xl mb-6">📂</div>
-                    <h3 className="text-2xl font-extrabold mb-4 text-slate-800 dark:text-white">서버에 저장된 기록이 없습니다</h3>
-                    <p className="text-slate-500 mb-10">측정을 종료하면 이곳에 진단 리포트가 안전하게 저장됩니다.</p>
-                    <button
-                        onClick={() => setScreen('camera')}
-                        className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition transform hover:-translate-y-1"
-                    >
-                        🚀 측정 시작하기
-                    </button>
+            {isLoading ? (
+                <div className="text-center py-20 text-slate-400 animate-pulse font-bold text-lg">데이터를 불러오는 중... ⏳</div>
+            ) : history.length === 0 ? (
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-16 text-center shadow-sm border border-slate-100 dark:border-slate-800">
+                    <div className="text-5xl mb-4 opacity-50">📭</div>
+                    <p className="text-slate-500 dark:text-slate-400 font-bold text-lg mb-2">아직 측정 기록이 없습니다.</p>
+                    <p className="text-sm text-slate-400">메인 화면에서 첫 번째 모니터링을 시작해 보세요!</p>
                 </div>
             ) : (
-                /* ✅ 서버에서 가져온 데이터 목록 출력 */
-                <div className="flex flex-col gap-4 overflow-y-auto pr-2 pb-10">
-                    {reports.map((report, index) => (
-                        <div key={index} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center justify-between shadow-sm hover:shadow-md transition">
-                            <div className="flex items-center gap-6">
-                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black ${report.score >= 80
-                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                    : report.score >= 60
-                                        ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-500'
-                                        : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                                    }`}>
-                                    {report.score}
+                <div className="flex flex-col gap-4">
+                    {history.map((item, index) => (
+                        <div
+                            key={item.sessionId || index}
+                            onClick={() => handleReportClick(item)}
+                            className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between group transform hover:-translate-y-1"
+                        >
+                            <div className="flex items-center gap-5">
+                                <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black shadow-inner
+                                    ${item.score >= 90 ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                                        item.score >= 70 ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
+                                            'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}
+                                >
+                                    {item.score}
                                 </div>
                                 <div>
-                                    <div className="text-lg font-bold text-slate-800 dark:text-white mb-1">
-                                        {new Date(report.createdAt).toLocaleString()} 측정 결과
-                                    </div>
-                                    <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                                        총 {report.totalCount}회 스캔 | 주의 {report.warningCount}회 | 위험 {report.dangerCount}회
-                                    </div>
+                                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-xl mb-1">
+                                        {formatDate(item.createdAt)} 측정
+                                    </h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium flex gap-3">
+                                        <span>⏱️ {formatSimpleDuration(item.totalSeconds)}</span>
+                                        <span>⚠️ 주의 {formatSimpleDuration(item.warningSeconds)}</span>
+                                    </p>
                                 </div>
                             </div>
-                            <button className="px-5 py-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-600 transition">
-                                상세 보기
-                            </button>
+                            <div className="text-slate-300 group-hover:text-blue-500 transition font-bold text-2xl px-2">
+                                →
+                            </div>
                         </div>
                     ))}
                 </div>

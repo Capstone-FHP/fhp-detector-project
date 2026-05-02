@@ -110,8 +110,7 @@ export default function App() {
           )}
 
           {screen === 'login' && <div className="w-full max-w-md mx-auto bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 mt-10"><Login /></div>}
-          {screen === 'camera' && <div className="w-full h-full"><CameraView fhpState={fhpState} setFhpState={setFhpState} user={user} /></div>}
-          {screen === 'report' && <div className="w-full h-full"><ReportView setScreen={setScreen} user={user} /></div>}
+          {screen === 'camera' && <div className="w-full h-full"><CameraView fhpState={fhpState} setFhpState={setFhpState} user={user} setScreen={setScreen} /></div>}          {screen === 'report' && <div className="w-full h-full"><ReportView setScreen={setScreen} user={user} /></div>}
         </main>
       </div>
     </div>

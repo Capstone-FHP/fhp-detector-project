@@ -1,18 +1,19 @@
-// 🚀 1. 상태 전송 API (sessionId가 추가되었습니다!)
+// 💡 공통 서버 주소 (나중에 주소가 바뀌면 여기 딱 한 줄만 수정하면 됩니다!)
+const API_BASE_URL = "https://delightful-transformation-production-2e9d.up.railway.app/api";
+
+// 🚀 1. 상태 전송 API (실시간 로그 기록용)
 export const sendFhpStateToBackend = async (uid, sessionId, state) => {
     const currentTime = new Date().toISOString();
 
     const payload = {
         uid: uid,
-        sessionId: sessionId, // 👈 이제 어떤 세션인지 백엔드가 알 수 있습니다!
+        sessionId: sessionId,
         timestamp: currentTime,
         status: state
     };
 
-    const BACKEND_URL = "https://delightful-transformation-production-2e9d.up.railway.app/api/posture/log";
-
     try {
-        const response = await fetch(BACKEND_URL, {
+        const response = await fetch(`${API_BASE_URL}/posture/log`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -24,13 +25,10 @@ export const sendFhpStateToBackend = async (uid, sessionId, state) => {
     }
 };
 
-
-// 📊 2. 요약 데이터 가져오기 API (명세서 완벽 반영!)
+// 📊 2. 특정 세션 요약 데이터 가져오기 API
 export const getPostureSummary = async (sessionId) => {
-    const BACKEND_URL = `https://delightful-transformation-production-2e9d.up.railway.app/api/posture/summary?sessionId=${sessionId}`;
-
     try {
-        const response = await fetch(BACKEND_URL, {
+        const response = await fetch(`${API_BASE_URL}/posture/summary?sessionId=${sessionId}`, {
             method: "GET",
             headers: { "Content-Type": "application/json" }
         });
@@ -49,7 +47,7 @@ export const getPostureSummary = async (sessionId) => {
     }
 };
 
-// 💡 2. [추가됨] 측정 종료 시 리포트(점수 및 통계)를 DB에 저장
+// 💡 3. 측정 종료 시 리포트(점수 및 통계)를 DB에 최종 저장 API
 export const savePostureSession = async (sessionData) => {
     try {
         const response = await fetch(`${API_BASE_URL}/posture/session`, {
@@ -64,13 +62,22 @@ export const savePostureSession = async (sessionData) => {
     }
 };
 
-// 💡 3. [추가됨] 리포트 화면에서 과거 모든 측정 기록 불러오기
+// 💡 4. 리포트 화면에서 유저의 과거 모든 측정 기록 불러오기 API
 export const getUserHistory = async (userId) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/posture/history/${userId}`);
-        return await response.json();
+        const response = await fetch(`${API_BASE_URL}/posture/history/${userId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.ok) {
+            return await response.json();
+        } else {
+            console.error("❌ [기록 불러오기 에러] 상태 코드:", response.status);
+            return [];
+        }
     } catch (error) {
         console.error("기록 불러오기 실패:", error);
-        return []; // 에러 시 빈 배열 반환
+        return []; // 에러 시 빈 배열 반환 (화면 뻗음 방지)
     }
 };
