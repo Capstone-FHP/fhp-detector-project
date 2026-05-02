@@ -9,7 +9,7 @@ export const sendFhpStateToBackend = async (uid, sessionId, state) => {
         status: state
     };
 
-    const BACKEND_URL = "http://localhost:8080/api/fhp-record";
+    const BACKEND_URL = "https://delightful-transformation-production-2e9d.up.railway.app/api/posture/log";
 
     try {
         const response = await fetch(BACKEND_URL, {
@@ -27,7 +27,7 @@ export const sendFhpStateToBackend = async (uid, sessionId, state) => {
 
 // 📊 2. 요약 데이터 가져오기 API (명세서 완벽 반영!)
 export const getPostureSummary = async (sessionId) => {
-    const BACKEND_URL = `http://localhost:8080/api/posture/summary?sessionId=${sessionId}`;
+    const BACKEND_URL = `https://delightful-transformation-production-2e9d.up.railway.app/api/posture/summary?sessionId=${sessionId}`;
 
     try {
         const response = await fetch(BACKEND_URL, {
@@ -46,5 +46,31 @@ export const getPostureSummary = async (sessionId) => {
     } catch (error) {
         console.error("⚠️ [요약 API 연결 실패]: 서버가 꺼져있거나 주소가 다릅니다.", error);
         return null;
+    }
+};
+
+// 💡 2. [추가됨] 측정 종료 시 리포트(점수 및 통계)를 DB에 저장
+export const savePostureSession = async (sessionData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/posture/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sessionData)
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("서버 저장 실패:", error);
+        return null;
+    }
+};
+
+// 💡 3. [추가됨] 리포트 화면에서 과거 모든 측정 기록 불러오기
+export const getUserHistory = async (userId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/posture/history/${userId}`);
+        return await response.json();
+    } catch (error) {
+        console.error("기록 불러오기 실패:", error);
+        return []; // 에러 시 빈 배열 반환
     }
 };
