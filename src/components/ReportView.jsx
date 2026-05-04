@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import PostureResultModal from './PostureResultModal';
-// import { getUserHistory } from '../services/fhpApi'; // 백엔드 완성 시 주석 해제
+// 💡 드디어 주석을 풀고 실제 통신 함수를 가져옵니다!
+import { getUserHistory } from '../services/fhpApi';
 
 export default function ReportView({ setScreen, user }) {
     const [history, setHistory] = useState([]);
@@ -11,36 +12,33 @@ export default function ReportView({ setScreen, user }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
-        // 🛠️ UI 테스트용 가짜 데이터 (Mock Data)
-        const fetchMockData = () => {
-            const mockHistory = [
-                { sessionId: 's1', score: 95, totalSeconds: 3600, warningSeconds: 120, dangerSeconds: 0, createdAt: "2026-05-02T14:30:00" },
-                { sessionId: 's2', score: 65, totalSeconds: 1800, warningSeconds: 500, dangerSeconds: 300, createdAt: "2026-05-01T10:15:00" },
-                { sessionId: 's3', score: 82, totalSeconds: 5400, warningSeconds: 600, dangerSeconds: 50, createdAt: "2026-04-30T16:45:00" },
-            ];
-            setHistory(mockHistory);
-            setIsLoading(false);
-        };
-
-        setTimeout(fetchMockData, 500);
-
-        /* 💡 백엔드 연동 시 아래 코드로 교체!
+        // 🚀 실제 백엔드 서버에서 유저의 기록을 가져오는 함수
         const loadRealData = async () => {
-            if (user?.uid) {
+            setIsLoading(true); // 로딩 시작
+
+            // 유저 정보(uid)가 확실히 있을 때만 서버에 요청합니다.
+            if (user && user.uid) {
                 const data = await getUserHistory(user.uid);
-                setHistory(data);
+                // 서버에서 가져온 데이터를 상태에 저장합니다. (데이터가 없으면 빈 배열)
+                setHistory(data || []);
+            } else {
+                setHistory([]);
             }
-            setIsLoading(false);
+
+            setIsLoading(false); // 로딩 끝
         };
+
         loadRealData();
-        */
     }, [user]);
 
+    // 날짜를 "5월 2일 14:30" 형태로 예쁘게 변환
     const formatDate = (isoString) => {
+        if (!isoString) return "날짜 없음";
         const date = new Date(isoString);
         return `${date.getMonth() + 1}월 ${date.getDate()}일 ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
     };
 
+    // 리스트에 보여줄 간단한 시간 포맷
     const formatSimpleDuration = (sec) => {
         const h = Math.floor(sec / 3600);
         const m = Math.floor((sec % 3600) / 60);
@@ -48,6 +46,7 @@ export default function ReportView({ setScreen, user }) {
         return `${m}분`;
     };
 
+    // 리스트 항목 클릭 시 모달 열기
     const handleReportClick = (sessionData) => {
         setSelectedReport(sessionData);
         setIsModalOpen(true);
@@ -77,7 +76,9 @@ export default function ReportView({ setScreen, user }) {
             </div>
 
             {isLoading ? (
-                <div className="text-center py-20 text-slate-400 animate-pulse font-bold text-lg">데이터를 불러오는 중... ⏳</div>
+                <div className="text-center py-20 text-slate-400 animate-pulse font-bold text-lg">
+                    실제 서버에서 데이터를 불러오는 중... ⏳
+                </div>
             ) : history.length === 0 ? (
                 <div className="bg-white dark:bg-slate-800 rounded-3xl p-16 text-center shadow-sm border border-slate-100 dark:border-slate-800">
                     <div className="text-5xl mb-4 opacity-50">📭</div>
@@ -86,7 +87,8 @@ export default function ReportView({ setScreen, user }) {
                 </div>
             ) : (
                 <div className="flex flex-col gap-4">
-                    {history.map((item, index) => (
+                    {/* 최신 기록이 위로 오도록 역순(reverse)으로 정렬해서 보여주는 센스! */}
+                    {[...history].reverse().map((item, index) => (
                         <div
                             key={item.sessionId || index}
                             onClick={() => handleReportClick(item)}
