@@ -1,8 +1,10 @@
 package com.example.backend_logic.controller;
 
 import com.example.backend_logic.dto.PostureLogRequestDto;
+import com.example.backend_logic.dto.PostureSessionRequestDto;
 import com.example.backend_logic.dto.PostureSummaryResponseDto;
 import com.example.backend_logic.entity.PostureLog;
+import com.example.backend_logic.entity.PostureSession;
 import com.example.backend_logic.repository.PostureRepository;
 import com.example.backend_logic.service.PostureService;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +58,20 @@ public class PostureController {
     @GetMapping("/summary")
     public ResponseEntity<PostureSummaryResponseDto> getSessionSummary(@RequestParam String sessionId){
         PostureSummaryResponseDto summary= postureService.getSessionSummary(sessionId);
-
         return ResponseEntity.ok(summary);
+    }
+
+    // 세션 결과 저장 API
+    @PostMapping("/session")
+    public ResponseEntity<String> saveSession(@RequestBody PostureSessionRequestDto requestDto) {
+        postureService.saveSession(requestDto);
+        return ResponseEntity.ok("세션 저장 완료!");
+    }
+
+    // 유저 과거 기록 조회 API
+    @GetMapping("/history/{userId}")
+    public ResponseEntity<List<PostureSession>> getUserHistory(@PathVariable String userId) {
+        List<PostureSession> history = postureService.getUserHistory(userId);
+        return ResponseEntity.ok(history);
     }
 }

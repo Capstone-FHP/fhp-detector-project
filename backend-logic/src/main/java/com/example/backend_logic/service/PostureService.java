@@ -1,8 +1,11 @@
 package com.example.backend_logic.service;
 
+import com.example.backend_logic.dto.PostureSessionRequestDto;
 import com.example.backend_logic.dto.PostureSummaryResponseDto;
 import com.example.backend_logic.entity.PostureLog;
+import com.example.backend_logic.entity.PostureSession;
 import com.example.backend_logic.repository.PostureRepository;
+import com.example.backend_logic.repository.PostureSessionRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,9 +14,30 @@ import java.util.List;
 public class PostureService {
 
     private final PostureRepository postureRepository;
+    private final PostureSessionRepository postureSessionRepository;
 
-    public PostureService(PostureRepository postureRepository) {
+    public PostureService(PostureRepository postureRepository, PostureSessionRepository postureSessionRepository) {
         this.postureRepository = postureRepository;
+        this.postureSessionRepository = postureSessionRepository;
+    }
+
+    // 세션 결과 저장
+    public void saveSession(PostureSessionRequestDto dto) {
+        PostureSession session = new PostureSession(
+                dto.getUserId(),
+                dto.getSessionId(),
+                dto.getScore(),
+                dto.getTotalSeconds(),
+                dto.getWarningSeconds(),
+                dto.getDangerSeconds(),
+                dto.getCreatedAt()
+        );
+        postureSessionRepository.save(session);
+    }
+
+    // 유저의 과거 세션 기록 조회
+    public List<PostureSession> getUserHistory(String userId) {
+        return postureSessionRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     // 세션별 요약 통계를 계산하는 메서드
