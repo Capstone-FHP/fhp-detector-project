@@ -1,0 +1,10 @@
+platform :ios, '15.0'
+
+target 'FHPDetector' do
+  use_frameworks!
+
+  pod 'MediaPipeTasksVision'
+  pod 'FirebaseAuth'
+  pod 'GoogleSignIn'
+
+end

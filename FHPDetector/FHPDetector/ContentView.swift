@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import MediaPipeTasksVision
+
 
 struct ContentView: View {
     var body: some View {
