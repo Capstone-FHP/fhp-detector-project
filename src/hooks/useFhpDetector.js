@@ -16,7 +16,7 @@ export function useFhpDetector(setFhpState) {
 
     const isMeasuringRef = useRef(false);
 
-    // AI 모델 초기화
+    // AI 모델 초기화 (최신 tasks-vision)
     useEffect(() => {
         const initModel = async () => {
             try {
@@ -75,18 +75,27 @@ export function useFhpDetector(setFhpState) {
                 const nose = landmarks[1];
                 const chin = landmarks[152];
 
-                // 💡 [복구됨] 복잡한 상하 비율 계산(Pitch)을 모두 지우고, 순수하게 귀 사이의 거리(얼굴 크기)만 잽니다.
+                // 💡 [부활!] 얼굴 크기(거리)와 상하 비율(고개 숙임)을 동시에 계산합니다.
                 const faceWidth = Math.sqrt(Math.pow(rightEar.x - leftEar.x, 2) + Math.pow(rightEar.y - leftEar.y, 2));
+                const upperFaceHeight = nose.y - midEye.y;
+                const lowerFaceHeight = chin.y - nose.y;
+                const pitchRatio = lowerFaceHeight / upperFaceHeight;
 
-                currentDataRef.current = { faceWidth };
+                currentDataRef.current = { faceWidth, pitchRatio };
 
                 if (calibrationData) {
                     const distanceRatio = faceWidth / calibrationData.faceWidth;
+                    const pitchDiffRatio = pitchRatio / calibrationData.pitchRatio;
 
-                    // 💡 [복구됨] 고개 숙임 예외 처리 없이, 화면으로 다가오면 무조건 즉각 반응합니다!
-                    if (distanceRatio > 1.10) setFhpState('danger');       // 10% 가까워짐
-                    else if (distanceRatio > 1.04) setFhpState('warning'); // 4% 가까워짐
-                    else setFhpState('normal');
+                    // 💡 [부활!] 고개를 푹 숙인 경우 (비율이 25% 이상 감소) 무조건 정상 처리!
+                    if (pitchDiffRatio < 0.75) {
+                        setFhpState('normal');
+                    } else {
+                        // 고개를 숙이지 않았다면, 모니터로 다가온 정도(거리)를 민감하게 판별
+                        if (distanceRatio > 1.10) setFhpState('danger');       // 10% 가까워짐
+                        else if (distanceRatio > 1.04) setFhpState('warning'); // 4% 가까워짐
+                        else setFhpState('normal');
+                    }
                 }
 
                 ctx.fillStyle = '#00FF00';
@@ -150,8 +159,10 @@ export function useFhpDetector(setFhpState) {
 
     const calibrate = useCallback(() => {
         if (currentDataRef.current) {
+            // 💡 [중요] 영점 조절 시 거리뿐만 아니라 '고개 각도(비율)'도 같이 저장해야 합니다!
             setCalibrationData({
-                faceWidth: currentDataRef.current.faceWidth
+                faceWidth: currentDataRef.current.faceWidth,
+                pitchRatio: currentDataRef.current.pitchRatio
             });
             setFhpState('normal');
 
