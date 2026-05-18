@@ -52,7 +52,7 @@ export default function CameraView({ fhpState, setFhpState, user, setScreen }) {
 
     const isCalibrated = !!calibrationData;
 
-    // 💡 시간 누적 타이머 및 경고 알림 주기 수정 (20초 간격)
+    // 💡 시간 누적 타이머 및 경고 알림 주기 (20초 간격)
     useEffect(() => {
         if (!isMeasuring || !currentSessionId || !isCalibrated) return;
 
@@ -118,9 +118,22 @@ export default function CameraView({ fhpState, setFhpState, user, setScreen }) {
 
         stopMeasurement();
 
-        const warningPenalty = localStatsRef.current.warningSeconds * 0.5;
-        const dangerPenalty = localStatsRef.current.dangerSeconds * 1.5;
-        const score = Math.max(0, Math.round(100 - warningPenalty - dangerPenalty));
+        // 💡 [최종 수정됨] 비율제 계산 방식 + 짧은 테스트 방어(최소 60초 보정)
+        const total = localStatsRef.current.totalSeconds;
+        // 테스트 중 비율이 폭주해 0점이 되는 것을 막기 위해 최소 60초 기준으로 계산합니다.
+        const effectiveTotal = Math.max(total, 60);
+
+        const warning = localStatsRef.current.warningSeconds;
+        const danger = localStatsRef.current.dangerSeconds;
+
+        // 1. 위험(danger)은 주의(warning)보다 2배 더 나쁜 것으로 가중치를 줍니다.
+        const weightedBadSeconds = warning + (danger * 2);
+
+        // 2. 전체 시간 중 나쁜 자세가 차지하는 비율을 구합니다. (0 ~ 1 사이의 값)
+        const badRatio = weightedBadSeconds / effectiveTotal;
+
+        // 3. 100점 만점에서 나쁜 비율(%)만큼 감점합니다.
+        const score = Math.max(0, Math.round(100 - (badRatio * 100)));
 
         const sessionData = {
             userId: user?.uid,
