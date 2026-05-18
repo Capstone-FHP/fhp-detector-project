@@ -16,7 +16,8 @@ public class CorsConfig {
                 registry.addMapping("/**")
                         .allowedOrigins(
                                 "http://localhost:5173",
-                                "https://fhp-detector-project.vercel.app"
+                                "https://fhp-detector-project.vercel.app",
+                                "https://fhp-detector-project-m8ktz57sh-jxxcws-projects.vercel.app"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
