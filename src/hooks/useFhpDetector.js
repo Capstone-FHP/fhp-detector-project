@@ -1,189 +1,253 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+import { useState, useRef, useEffect } from 'react';
+import { FilesetResolver, PoseLandmarker, DrawingUtils } from "@mediapipe/tasks-vision";
 
-export function useFhpDetector(setFhpState) {
-    const [isAiLoaded, setIsAiLoaded] = useState(false);
+// 두 점 사이의 거리를 구하는 수학 공식
+const calculateDistance = (point1, point2) => {
+    return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
+};
+
+export function useFhpDetector(setIsFhpWarning) {
     const [isMeasuring, setIsMeasuring] = useState(false);
+    const [isAiLoaded, setIsAiLoaded] = useState(false);
     const [calibrationData, setCalibrationData] = useState(null);
 
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
-    const faceLandmarkerRef = useRef(null);
-
-    const currentDataRef = useRef(null);
-    const requestRef = useRef(null);
+    const streamRef = useRef(null);
+    const poseLandmarkerRef = useRef(null);
+    const animationRef = useRef(null);
     const lastVideoTimeRef = useRef(-1);
 
-    const isMeasuringRef = useRef(false);
+    const currentLandmarksRef = useRef(null);
+    const historyRef = useRef([]);
+    const warningStateRef = useRef('normal');
+    const calibrationDataRef = useRef(null);
 
-    // AI 모델 초기화 (최신 tasks-vision)
     useEffect(() => {
-        const initModel = async () => {
+        const initializeAI = async () => {
             try {
                 const vision = await FilesetResolver.forVisionTasks(
-                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
                 );
-                const landmarker = await FaceLandmarker.createFromOptions(vision, {
+                poseLandmarkerRef.current = await PoseLandmarker.createFromOptions(vision, {
                     baseOptions: {
-                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate: "GPU",
                     },
-                    outputFaceBlendshapes: false,
                     runningMode: "VIDEO",
-                    numFaces: 1
+                    numPoses: 1,
                 });
-
-                faceLandmarkerRef.current = landmarker;
                 setIsAiLoaded(true);
             } catch (error) {
-                console.error("AI 모델 로딩 실패:", error);
+                console.error("AI 로딩 에러:", error);
             }
         };
-        initModel();
-
-        return () => {
-            if (faceLandmarkerRef.current) faceLandmarkerRef.current.close();
-            if (requestRef.current) cancelAnimationFrame(requestRef.current);
-        };
+        initializeAI();
     }, []);
 
-    const predict = useCallback(() => {
-        if (!isMeasuringRef.current || !videoRef.current || !faceLandmarkerRef.current || !canvasRef.current) return;
-
+    const predictWebcam = () => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+        const poseLandmarker = poseLandmarkerRef.current;
+
+        if (!video || !canvas || !poseLandmarker) {
+            animationRef.current = requestAnimationFrame(predictWebcam);
+            return;
+        }
+
+        const canvasCtx = canvas.getContext("2d");
+        const drawingUtils = new DrawingUtils(canvasCtx);
+
+        if (canvas.width !== video.videoWidth) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+        }
 
         let startTimeMs = performance.now();
 
-        if (video.currentTime !== lastVideoTimeRef.current) {
+        if (lastVideoTimeRef.current !== video.currentTime) {
             lastVideoTimeRef.current = video.currentTime;
+            const result = poseLandmarker.detectForVideo(video, startTimeMs);
 
-            const results = faceLandmarkerRef.current.detectForVideo(video, startTimeMs);
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-            ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            if (result.landmarks && result.landmarks.length > 0) {
+                const landmarks = result.landmarks[0];
+                currentLandmarksRef.current = landmarks;
 
-            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-                const landmarks = results.faceLandmarks[0];
+                drawingUtils.drawLandmarks(landmarks, { radius: 4, color: "#FF0000" });
+                drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+                    color: "#00FF00",
+                    lineWidth: 3,
+                });
 
-                const leftEar = landmarks[234];
-                const rightEar = landmarks[454];
-                const midEye = landmarks[168];
-                const nose = landmarks[1];
-                const chin = landmarks[152];
+                if (calibrationDataRef.current && calibrationDataRef.current.ratio > 0) {
+                    const baselineRatio = calibrationDataRef.current.ratio;
+                    // 💡 영점 조절 때 저장해 둔 고개 각도(비율) 불러오기
+                    const baselinePitch = calibrationDataRef.current.pitchRatio;
 
-                // 💡 [부활!] 얼굴 크기(거리)와 상하 비율(고개 숙임)을 동시에 계산합니다.
-                const faceWidth = Math.sqrt(Math.pow(rightEar.x - leftEar.x, 2) + Math.pow(rightEar.y - leftEar.y, 2));
-                const upperFaceHeight = nose.y - midEye.y;
-                const lowerFaceHeight = chin.y - nose.y;
-                const pitchRatio = lowerFaceHeight / upperFaceHeight;
+                    // 주요 좌표 추출
+                    const nose = landmarks[0];
+                    const leftEye = landmarks[2];
+                    const rightEye = landmarks[5];
+                    const leftEar = landmarks[7];
+                    const rightEar = landmarks[8];
+                    const leftMouth = landmarks[9];
+                    const rightMouth = landmarks[10];
+                    const leftShoulder = landmarks[11];
+                    const rightShoulder = landmarks[12];
 
-                currentDataRef.current = { faceWidth, pitchRatio };
+                    // 1. 거북목 측정용 너비 계산
+                    const currentFaceWidth = calculateDistance(leftEar, rightEar);
+                    const currentShoulderWidth = calculateDistance(leftShoulder, rightShoulder);
 
-                if (calibrationData) {
-                    const distanceRatio = faceWidth / calibrationData.faceWidth;
-                    const pitchDiffRatio = pitchRatio / calibrationData.pitchRatio;
+                    // 💡 2. 고개 숙임(Pitch) 감지용 세로 비율 계산
+                    const midEyeY = (leftEye.y + rightEye.y) / 2;
+                    const midMouthY = (leftMouth.y + rightMouth.y) / 2;
 
-                    // 💡 [부활!] 고개를 푹 숙인 경우 (비율이 25% 이상 감소) 무조건 정상 처리!
-                    if (pitchDiffRatio < 0.75) {
-                        setFhpState('normal');
-                    } else {
-                        // 고개를 숙이지 않았다면, 모니터로 다가온 정도(거리)를 민감하게 판별
-                        if (distanceRatio > 1.10) setFhpState('danger');       // 10% 가까워짐
-                        else if (distanceRatio > 1.04) setFhpState('warning'); // 4% 가까워짐
-                        else setFhpState('normal');
+                    const upperFaceHeight = nose.y - midEyeY; // 눈~코 길이
+                    const lowerFaceHeight = midMouthY - nose.y; // 코~입 길이
+
+                    // (에러 방지) 상단 길이가 0보다 클 때만 비율 계산
+                    const currentPitchRatio = upperFaceHeight > 0 ? (lowerFaceHeight / upperFaceHeight) : 1;
+
+                    if (currentShoulderWidth > 0) {
+                        const currentRatio = currentFaceWidth / currentShoulderWidth;
+                        const earChange = currentRatio / baselineRatio;
+
+                        // 💡 현재 고개 각도 변화량 계산
+                        const pitchChange = currentPitchRatio / baselinePitch;
+
+                        let currentState = 'normal';
+
+                        // 💡 [핵심 추가] 고개를 푹 숙인 경우 (비율이 25% 이상 감소하면) 강제 정상 처리!
+                        if (pitchChange < 0.75) {
+                            currentState = 'normal';
+                        } else {
+                            // 고개를 안 숙였다면 기존 로직대로 거북목 검사 진행
+                            if (earChange >= 1.06) {
+                                currentState = 'danger';  // 6% 이상 전진
+                            } else if (earChange >= 1.03) {
+                                currentState = 'warning'; // 3% 이상 전진
+                            }
+                        }
+
+                        // 히스토리에 저장 (최근 3프레임 유지)
+                        historyRef.current.push(currentState);
+                        if (historyRef.current.length > 3) {
+                            historyRef.current.shift();
+                        }
+
+                        // 상태 안정화 로직 (깜빡임 방지)
+                        const dangerCount = historyRef.current.filter((s) => s === 'danger').length;
+                        const warningCount = historyRef.current.filter((s) => s === 'warning').length;
+
+                        let confirmedState = 'normal';
+                        if (dangerCount >= 2) {
+                            confirmedState = 'danger';
+                        } else if (dangerCount + warningCount >= 2) {
+                            confirmedState = 'warning';
+                        }
+
+                        // 상태가 바뀌었을 때만 App.jsx로 알림
+                        if (warningStateRef.current !== confirmedState) {
+                            warningStateRef.current = confirmedState;
+                            setIsFhpWarning(confirmedState);
+                        }
                     }
                 }
-
-                ctx.fillStyle = '#00FF00';
-                [leftEar, rightEar, midEye, nose, chin].forEach(pt => {
-                    ctx.beginPath();
-                    ctx.arc(pt.x * canvas.width, pt.y * canvas.height, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                });
-            } else {
-                currentDataRef.current = null;
             }
-            ctx.restore();
+            canvasCtx.restore();
+        }
+        animationRef.current = requestAnimationFrame(predictWebcam);
+    };
+
+    const calibrate = () => {
+        const landmarks = currentLandmarksRef.current;
+        if (!landmarks) {
+            alert("자세가 인식되지 않았습니다. 카메라 정면에 서주세요.");
+            return;
         }
 
-        if (isMeasuringRef.current) {
-            requestRef.current = requestAnimationFrame(predict);
-        }
-    }, [calibrationData, setFhpState]);
+        // 주요 좌표 추출
+        const nose = landmarks[0];
+        const leftEye = landmarks[2];
+        const rightEye = landmarks[5];
+        const leftEar = landmarks[7];
+        const rightEar = landmarks[8];
+        const leftMouth = landmarks[9];
+        const rightMouth = landmarks[10];
+        const leftShoulder = landmarks[11];
+        const rightShoulder = landmarks[12];
 
-    const startMeasurement = useCallback(async () => {
-        if (!videoRef.current) return;
+        const faceWidth = calculateDistance(leftEar, rightEar);
+        const shoulderWidth = calculateDistance(leftShoulder, rightShoulder);
 
-        setIsMeasuring(true);
-        isMeasuringRef.current = true;
-        setFhpState('normal');
+        if (shoulderWidth === 0) return;
 
+        // 거북목 기준 비율 저장
+        const baselineRatio = faceWidth / shoulderWidth;
+
+        // 💡 고개 숙임 기준 비율(Pitch) 계산 및 저장
+        const midEyeY = (leftEye.y + rightEye.y) / 2;
+        const midMouthY = (leftMouth.y + rightMouth.y) / 2;
+        const upperFaceHeight = nose.y - midEyeY;
+        const lowerFaceHeight = midMouthY - nose.y;
+        const baselinePitch = upperFaceHeight > 0 ? (lowerFaceHeight / upperFaceHeight) : 1;
+
+        setCalibrationData({ ratio: baselineRatio, pitchRatio: baselinePitch });
+        calibrationDataRef.current = { ratio: baselineRatio, pitchRatio: baselinePitch };
+
+        historyRef.current = [];
+        alert("영점 조절 완료! 이제부터 측정을 시작합니다.");
+    };
+
+    const startMeasurement = async () => {
+        if (!isAiLoaded) return;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 640, height: 480 }
-            });
-            videoRef.current.srcObject = stream;
-
-            videoRef.current.onloadedmetadata = () => {
-                videoRef.current.play().then(() => {
-                    if (canvasRef.current) {
-                        canvasRef.current.width = videoRef.current.videoWidth;
-                        canvasRef.current.height = videoRef.current.videoHeight;
-                    }
-                    predict();
-                }).catch(e => console.error("카메라 재생 실패:", e));
-            };
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            streamRef.current = stream;
+            setIsMeasuring(true);
         } catch (err) {
-            console.error("카메라 접근 권한이 없습니다.", err);
+            alert("카메라 권한을 허용해주세요!");
         }
-    }, [predict, setFhpState]);
+    };
 
-    const stopMeasurement = useCallback(() => {
+    const stopMeasurement = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext("2d");
+            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
         setIsMeasuring(false);
-        isMeasuringRef.current = false;
-
-        if (requestRef.current) cancelAnimationFrame(requestRef.current);
-
-        if (videoRef.current && videoRef.current.srcObject) {
-            videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-        }
 
         setCalibrationData(null);
-        currentDataRef.current = null;
+        calibrationDataRef.current = null;
+        setIsFhpWarning('normal');
+    };
+
+    useEffect(() => {
+        if (isMeasuring && videoRef.current && streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+            videoRef.current.onloadeddata = () => { predictWebcam(); };
+        }
+    }, [isMeasuring]);
+
+    useEffect(() => {
+        return () => {
+            if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            if (poseLandmarkerRef.current) poseLandmarkerRef.current.close();
+        };
     }, []);
 
-    const calibrate = useCallback(() => {
-        if (currentDataRef.current) {
-            // 💡 [중요] 영점 조절 시 거리뿐만 아니라 '고개 각도(비율)'도 같이 저장해야 합니다!
-            setCalibrationData({
-                faceWidth: currentDataRef.current.faceWidth,
-                pitchRatio: currentDataRef.current.pitchRatio
-            });
-            setFhpState('normal');
-
-            if (canvasRef.current) {
-                const ctx = canvasRef.current.getContext('2d');
-                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
-                ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-            }
-        } else {
-            alert("얼굴이 인식되지 않았습니다. 카메라 정면을 바라보세요.");
-        }
-    }, [setFhpState]);
-
     return {
-        isAiLoaded,
-        isMeasuring,
-        calibrationData,
-        videoRef,
-        canvasRef,
-        startMeasurement,
-        stopMeasurement,
-        calibrate
+        isMeasuring, isAiLoaded, calibrationData, videoRef, canvasRef,
+        startMeasurement, stopMeasurement, calibrate
     };
 }
