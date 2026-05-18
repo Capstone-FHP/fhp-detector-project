@@ -10,6 +10,7 @@ import com.example.backend_logic.service.PostureService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/posture")
@@ -63,9 +64,9 @@ public class PostureController {
 
     // 세션 결과 저장 API
     @PostMapping("/session")
-    public ResponseEntity<String> saveSession(@RequestBody PostureSessionRequestDto requestDto) {
+    public ResponseEntity<?> saveSession(@RequestBody PostureSessionRequestDto requestDto) {
         postureService.saveSession(requestDto);
-        return ResponseEntity.ok("세션 저장 완료!");
+        return ResponseEntity.ok(Map.of("message", "세션 저장 완료!"));
     }
 
     // 유저 과거 기록 조회 API
