@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-// 💡 [변경됨] 최신 모던 라이브러리 tasks-vision 사용!
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
 export function useFhpDetector(setFhpState) {
@@ -15,10 +14,9 @@ export function useFhpDetector(setFhpState) {
     const requestRef = useRef(null);
     const lastVideoTimeRef = useRef(-1);
 
-    // 비동기 루프에서 상태를 안전하게 추적하기 위한 Ref
     const isMeasuringRef = useRef(false);
 
-    // 💡 1. 최신 AI 모델 초기화 (Vercel 빌드 에러 없음!)
+    // AI 모델 초기화
     useEffect(() => {
         const initModel = async () => {
             try {
@@ -28,7 +26,6 @@ export function useFhpDetector(setFhpState) {
                 const landmarker = await FaceLandmarker.createFromOptions(vision, {
                     baseOptions: {
                         modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-                        delegate: "GPU"
                     },
                     outputFaceBlendshapes: false,
                     runningMode: "VIDEO",
@@ -49,7 +46,6 @@ export function useFhpDetector(setFhpState) {
         };
     }, []);
 
-    // 💡 2. 매 프레임 분석 로직 (고개 숙임 방지 로직 그대로 유지!)
     const predict = useCallback(() => {
         if (!isMeasuringRef.current || !videoRef.current || !faceLandmarkerRef.current || !canvasRef.current) return;
 
@@ -59,16 +55,13 @@ export function useFhpDetector(setFhpState) {
 
         let startTimeMs = performance.now();
 
-        // 프레임이 업데이트 되었을 때만 분석 실행
         if (video.currentTime !== lastVideoTimeRef.current) {
             lastVideoTimeRef.current = video.currentTime;
 
-            // 💡 [변경됨] 최신 tasks-vision의 분석 함수
             const results = faceLandmarkerRef.current.detectForVideo(video, startTimeMs);
 
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // 캔버스 좌우 반전 (거울 모드)
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -76,38 +69,26 @@ export function useFhpDetector(setFhpState) {
             if (results.faceLandmarks && results.faceLandmarks.length > 0) {
                 const landmarks = results.faceLandmarks[0];
 
-                // 주요 랜드마크 추출
                 const leftEar = landmarks[234];
                 const rightEar = landmarks[454];
                 const midEye = landmarks[168];
                 const nose = landmarks[1];
                 const chin = landmarks[152];
 
-                // 거리(Z축 대용) 및 고개 숙임(Pitch) 비율 계산
+                // 💡 [복구됨] 복잡한 상하 비율 계산(Pitch)을 모두 지우고, 순수하게 귀 사이의 거리(얼굴 크기)만 잽니다.
                 const faceWidth = Math.sqrt(Math.pow(rightEar.x - leftEar.x, 2) + Math.pow(rightEar.y - leftEar.y, 2));
-                const upperFaceHeight = nose.y - midEye.y;
-                const lowerFaceHeight = chin.y - nose.y;
-                const pitchRatio = lowerFaceHeight / upperFaceHeight;
 
-                currentDataRef.current = { faceWidth, pitchRatio };
+                currentDataRef.current = { faceWidth };
 
-                // 거북목 판별 (영점 조절 데이터가 있을 때)
                 if (calibrationData) {
                     const distanceRatio = faceWidth / calibrationData.faceWidth;
-                    const pitchDiffRatio = pitchRatio / calibrationData.pitchRatio;
 
-                    // 고개를 확 숙인 경우 (25% 이상 비율 감소) -> 정상 처리
-                    if (pitchDiffRatio < 0.75) {
-                        setFhpState('normal');
-                    } else {
-                        // 얼굴이 모니터로 다가온 경우
-                        if (distanceRatio > 1.15) setFhpState('danger');
-                        else if (distanceRatio > 1.05) setFhpState('warning');
-                        else setFhpState('normal');
-                    }
+                    // 💡 [복구됨] 고개 숙임 예외 처리 없이, 화면으로 다가오면 무조건 즉각 반응합니다!
+                    if (distanceRatio > 1.10) setFhpState('danger');       // 10% 가까워짐
+                    else if (distanceRatio > 1.04) setFhpState('warning'); // 4% 가까워짐
+                    else setFhpState('normal');
                 }
 
-                // 시각적 피드백 (얼굴에 점 찍기)
                 ctx.fillStyle = '#00FF00';
                 [leftEar, rightEar, midEye, nose, chin].forEach(pt => {
                     ctx.beginPath();
@@ -120,7 +101,6 @@ export function useFhpDetector(setFhpState) {
             ctx.restore();
         }
 
-        // 반복 루프
         if (isMeasuringRef.current) {
             requestRef.current = requestAnimationFrame(predict);
         }
@@ -134,18 +114,20 @@ export function useFhpDetector(setFhpState) {
         setFhpState('normal');
 
         try {
-            // 💡 [변경됨] camera_utils를 버리고 브라우저 기본 웹캠 API 사용
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { width: 640, height: 480 }
             });
             videoRef.current.srcObject = stream;
-            videoRef.current.addEventListener('loadeddata', () => {
-                if (canvasRef.current) {
-                    canvasRef.current.width = videoRef.current.videoWidth;
-                    canvasRef.current.height = videoRef.current.videoHeight;
-                }
-                predict(); // 루프 시작!
-            });
+
+            videoRef.current.onloadedmetadata = () => {
+                videoRef.current.play().then(() => {
+                    if (canvasRef.current) {
+                        canvasRef.current.width = videoRef.current.videoWidth;
+                        canvasRef.current.height = videoRef.current.videoHeight;
+                    }
+                    predict();
+                }).catch(e => console.error("카메라 재생 실패:", e));
+            };
         } catch (err) {
             console.error("카메라 접근 권한이 없습니다.", err);
         }
@@ -157,7 +139,6 @@ export function useFhpDetector(setFhpState) {
 
         if (requestRef.current) cancelAnimationFrame(requestRef.current);
 
-        // 카메라 스트림 종료
         if (videoRef.current && videoRef.current.srcObject) {
             videoRef.current.srcObject.getTracks().forEach(track => track.stop());
             videoRef.current.srcObject = null;
@@ -170,8 +151,7 @@ export function useFhpDetector(setFhpState) {
     const calibrate = useCallback(() => {
         if (currentDataRef.current) {
             setCalibrationData({
-                faceWidth: currentDataRef.current.faceWidth,
-                pitchRatio: currentDataRef.current.pitchRatio
+                faceWidth: currentDataRef.current.faceWidth
             });
             setFhpState('normal');
 
