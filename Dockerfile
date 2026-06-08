@@ -1,10 +1,10 @@
 FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
-COPY src src
+COPY backend-logic/gradlew .
+COPY backend-logic/gradle gradle
+COPY backend-logic/build.gradle .
+COPY backend-logic/settings.gradle .
+COPY backend-logic/src src
 RUN chmod +x gradlew
 RUN ./gradlew bootJar -x test
 
