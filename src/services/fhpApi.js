@@ -1,5 +1,5 @@
 // 💡 공통 서버 주소 (나중에 주소가 바뀌면 여기 딱 한 줄만 수정하면 됩니다!)
-const API_BASE_URL = "https://delightful-transformation-production-2e9d.up.railway.app/api";
+const API_BASE_URL = "https://fhp-detector-project.onrender.com/api";
 
 // 🚀 1. 상태 전송 API (실시간 로그 기록용)
 export const sendFhpStateToBackend = async (uid, sessionId, state) => {
