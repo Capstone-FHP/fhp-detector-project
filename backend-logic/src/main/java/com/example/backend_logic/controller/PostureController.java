@@ -14,8 +14,8 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/posture")
-// 웹 브라우저(React)에서 서버로 데이터를 보내는 것을 허용.
-@CrossOrigin(origins = "http://localhost:3000")
+// CORS 설정은 CorsConfig에서 전역으로 관리한다.
+// 여기에 @CrossOrigin을 붙이면 전역 설정을 덮어써서 배포 도메인이 차단되므로 사용하지 않는다.
 public class PostureController {
 
     private final PostureRepository postureRepository;

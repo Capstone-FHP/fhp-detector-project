@@ -13,11 +13,13 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
+                // allowedOrigins 대신 allowedOriginPatterns를 쓰면 와일드카드를 쓸 수 있다.
+                // Vercel은 배포할 때마다 프리뷰 도메인이 새로 생기므로,
+                // 도메인을 하나씩 등록하면 배포할 때마다 CORS가 깨진다.
                 registry.addMapping("/**")
-                        .allowedOrigins(
-                                "http://localhost:5173",
-                                "https://fhp-detector-project.vercel.app",
-                                "https://fhp-detector-project-m8ktz57sh-jxxcws-projects.vercel.app"
+                        .allowedOriginPatterns(
+                                "http://localhost:*",
+                                "https://*.vercel.app"
                         )
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
