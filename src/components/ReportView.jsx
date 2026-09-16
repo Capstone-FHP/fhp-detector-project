@@ -87,8 +87,11 @@ export default function ReportView({ setScreen, user }) {
                 </div>
             ) : (
                 <div className="flex flex-col gap-4">
-                    {/* 최신 기록이 위로 오도록 역순(reverse)으로 정렬해서 보여주는 센스! */}
-                    {[...history].reverse().map((item, index) => (
+                    {/* 최신 기록이 위로 오도록 측정 시각 기준 내림차순 정렬.
+                        서버가 어떤 순서로 내려주든 항상 최신이 맨 위에 오게 한다. */}
+                    {[...history]
+                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                        .map((item, index) => (
                         <div
                             key={item.sessionId || index}
                             onClick={() => handleReportClick(item)}
